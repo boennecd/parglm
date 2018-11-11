@@ -16,14 +16,14 @@ parglm <- function(
 #' @export
 parglm.control <- function(
   epsilon = 1e-08, maxit = 25, trace = FALSE, nthreads = 1L,
-  block_size = 10000L)
+  block_size = NULL)
 {
   if (!is.numeric(epsilon) || epsilon <= 0)
     stop("value of 'epsilon' must be > 0")
   if (!is.numeric(maxit) || maxit <= 0)
     stop("maximum number of iterations must be > 0")
   stopifnot(is.numeric(nthreads) && nthreads >= 1,
-            is.numeric(block_size) && block_size >= 1)
+            is.null(block_size) || (is.numeric(block_size) && block_size >= 1))
   list(epsilon = epsilon, maxit = maxit, trace = trace, nthreads = nthreads,
        block_size = block_size)
 }
@@ -56,11 +56,17 @@ parglm.fit <- function(
   if (is.null(offset))
     offset <- rep.int(0, nobs)
 
+  block_size <- if(!is.null(control$block_size))
+    control$block_size else
+      if(control$nthreads > 1L)
+        max(nrow(X) / (2L * control$nthreads), control$nthreads) else
+          nrow(X)
+
   fit <- parallelglm(
     X = t(x), Ys = y, family = paste0(family$family, "_", family$link), beta0 =
       numeric(ncol(x)), weights = weights, offsets = offset, tol =
       control$epsilon, nthreads = control$nthreads, it_max = control$maxit,
-    trace = control$trace, block_size = control$block_size)
+    trace = control$trace, block_size = block_size)
 
   #####
   # compute objects as in `glm.fit`

@@ -139,11 +139,13 @@ public:
     arma::uword i;
     double dev = 0.;
     std::unique_ptr<R_F> R_f_out;
+    qr_parallel pool(std::vector<std::unique_ptr<qr_data_generator>>(),
+                     data.max_threads);
     for(i = 0; i < it_max; ++i){
       arma::vec beta_old = beta;
       data.beta = &beta;
 
-      R_f_out.reset(new R_F(get_R_f(data, i == 0)));
+      R_f_out.reset(new R_F(get_R_f(data, i == 0, pool)));
       /* TODO: can maybe done smarter using that R is triangular befor
        *       permutation */
       arma::mat R = R_f_out->R_rev_piv();
@@ -164,30 +166,25 @@ public:
       double devold = dev;
       dev = R_f_out->dev(0, 0);
 
-      if(std::abs(dev - devold) / (1e-2 + std::abs(dev)) < tol)
+      if(std::abs(dev - devold) / (.1 + std::abs(dev)) < tol)
         break;
     }
 
     return { beta, *R_f_out.get(), i, i < it_max };
   }
 
-  static R_F get_R_f(data_holder_base &data, bool first_it){
-    uword n = data.X.n_cols;
-
-    // Compute the number of blocks to create
-    uword num_blocks = (n + data.block_size - 1) / data.block_size;
-    std::vector<std::unique_ptr<qr_data_generator>> generators;
-    generators.reserve(num_blocks);
-
+  static R_F get_R_f(data_holder_base &data, bool first_it,
+                     qr_parallel &pool){
     // setup generators
-    uword i_start = 0;
-    for(uword i = 0; i < num_blocks; ++i, i_start += data.block_size)
-      generators.emplace_back(
-        new glm_qr_data_generator(
-              i_start, std::min(n - 1, i_start + data.block_size - 1),
-              data, first_it));
+    uword n = data.X.n_cols, i_start = 0, i_end = 0.;
+    for(; i_start < n; i_start = i_end + 1L){
+      i_end = std::min(n - 1, i_start + data.block_size - 1);
+      pool.submit(
+        std::unique_ptr<qr_data_generator>(
+         new glm_qr_data_generator(i_start, i_end, data, first_it)));
+    }
 
-    return qr_parallel(std::move(generators), data.max_threads).compute();
+    return pool.compute();
   }
 };
 
