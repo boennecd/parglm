@@ -50,6 +50,8 @@ parglm.fit <- function(
 
   if(EMPTY)
     stop("not implemented for empty model")
+  if(NCOL(y) > 1L)
+    stop("Multi column ", sQuote("y"), " is not supported")
 
   if (is.null(weights))
     weights <- rep.int(1, nobs)
@@ -72,13 +74,12 @@ parglm.fit <- function(
   # compute objects as in `glm.fit`
   coef <- drop(fit$coefficients)
   names(coef) <- xnames
-  eta <- drop(x %*% coef)
+  eta <- drop(x %*% coef) + offset
   good <- weights > 0
-  mu <- family$linkinv(eta + offset)
+  mu <- family$linkinv(eta)
   mu.eta.val <- family$mu.eta(eta)
   good <- (weights > 0) & (mu.eta.val != 0)
-  w <- sqrt((weights[good] * mu.eta.val[good]^2) /
-              family$variance(mu)[good])
+  w <- sqrt((weights[good] * mu.eta.val[good]^2) / family$variance(mu)[good])
 
   wt <- rep.int(0, nobs)
   wt[good] <- w^2
@@ -95,12 +96,8 @@ parglm.fit <- function(
   Rmat <- fit$R
   dimnames(Rmat) <- list(xnames, xnames)
 
-  names(residuals) <- ynames
-  names(mu) <- ynames
-  names(eta) <- ynames
-  names(wt) <- ynames
-  names(weights) <- ynames
-  names(y) <- ynames
+  names(residuals) <- names(mu) <- names(eta) <- names(wt) <- names(weights) <-
+    names(y) <- ynames
 
   # do as in `Matrix::rankMatrix`
   rtol <- max(dim(x)) * .Machine$double.eps
@@ -123,8 +120,13 @@ parglm.fit <- function(
   nulldf <- n.ok - as.integer(intercept)
   rank <- fit$rank
   resdf  <- n.ok - rank
-  ## calculate AIC
+  #-----------------------------------------------------------------------------
+  # calculate AIC
+  # we need to initialize n if the family is `binomial`. As of 11/11/2018 two
+  # column ys are not allowed so this is easy
+  n <- rep(1, nobs)
   aic.model <- family$aic(y, n, mu, weights, dev) + 2*rank
+  #-----------------------------------------------------------------------------
   list(coefficients = coef, residuals = residuals, fitted.values = mu,
        # effects = fit$effects, # TODO: add
        R = Rmat, rank = rank,

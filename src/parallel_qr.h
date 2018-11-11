@@ -44,10 +44,11 @@ class qr_parallel {
   };
 
   unsigned int n_threads;
-  thread_pool pool;
   std::list<std::future<R_F> > futures;
 
 public:
+  thread_pool th_pool;
+
   qr_parallel(ptr_vec, const unsigned int);
 
   void submit(std::unique_ptr<qr_data_generator>);

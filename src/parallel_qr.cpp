@@ -22,7 +22,7 @@ R_F qr_parallel::worker::operator()(){
 qr_parallel::qr_parallel(
   ptr_vec generators, const unsigned int max_threads):
   n_threads(std::max((unsigned int)1L, max_threads)),
-  pool(n_threads), futures()
+  futures(), th_pool(n_threads)
   {
     while(!generators.empty()){
       submit(std::move(generators.back()));
@@ -31,7 +31,7 @@ qr_parallel::qr_parallel(
   }
 
 void qr_parallel::submit(std::unique_ptr<qr_data_generator> generator){
-  futures.push_back(pool.submit(worker(std::move(generator))));
+  futures.push_back(th_pool.submit(worker(std::move(generator))));
 }
 
 R_F qr_parallel::compute(){
