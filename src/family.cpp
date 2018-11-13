@@ -528,7 +528,7 @@ std::string inverse_gaussian_log::name() const {
 /*----------------------------------------------------------------------------*/
 
 inline double Gamma_dev_resids(double y, double mu, double wt){
-  double f = (y > 0) ? y / mu : 1;
+  double f = (y == 0) ? 1. : y / mu;
   return -2 * wt * (std::log(f) - (y - mu)/mu);
 }
 
@@ -582,7 +582,7 @@ double Gamma_identity::dev_resids(double y, double mu, double wt) const {
 }
 
 double Gamma_identity::mu_eta(double eta) const {
-  return .1;
+  return 1.;
 }
 
 double Gamma_identity::initialize(double y, double weight) const {

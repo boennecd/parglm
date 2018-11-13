@@ -47,7 +47,17 @@ sim_func <- function(family, n, p){
       X[, i] <- rnorm(n, 0, sds[i])
     y <- rnorm(n, family$linkinv(rowSums(X)))
 
-  }
+  } else if(nam %in% c("Gammainverse", "Gammaidentity", "Gammalog")){
+    sds <- p:1
+    sds <- sqrt(sds^2 / sum(sds^2))
+    X <- matrix(nrow = n, ncol = p)
+    set.seed(77311413)
+    for(i in 1:p)
+      X[, i] <- rnorm(n, 0, sds[i])
+    y <- rgamma(n, family$linkinv(rowSums(X) + 6))
+
+  } else
+    stop("family not implemented")
 
   list(X = X, y = y)
 }
@@ -59,7 +69,7 @@ test_that("works with different families", {
   for(fa in list(
     binomial("logit"), binomial("probit"), binomial("cauchit"),
     binomial("cloglog"), gaussian("identity"), gaussian("inverse"),
-    gaussian("log"))){
+    gaussian("log"), Gamma("identity"), Gamma("log"))){
     tmp <- sim_func(fa, n, p)
     X <- tmp$X
     y <- tmp$y
@@ -86,7 +96,7 @@ test_that("works with different families", {
                  label = lab, tolerance = 1e-7)
     na <- rownames(s1$coefficients)
     expect_equal(s1$coefficients[na, 1:2], s2$coefficients[na, 1:2],
-                 label = lab, tolerance = 1e-7)
+                 label = lab, tolerance = sqrt(1e-7))
 
     # may also differ as the weights are not computed at the final estimates
     expect_equal(s1$dispersion, s2$dispersion, label = lab,
@@ -113,7 +123,7 @@ test_that("works with different families", {
                  label = lab)
     na <- rownames(s1$coefficients)
     expect_equal(s1$coefficients[na, 1:2], s2$coefficients[na, 1:2],
-                 label = lab, tolerance = 1e-7)
+                 label = lab, tolerance = sqrt(1e-7))
 
     # may also differ as the weights are not computed at the final estimates
     expect_equal(s1$dispersion, s2$dispersion, label = lab,
@@ -142,7 +152,7 @@ test_that("works with different families", {
                  label = lab)
     na <- rownames(s1$coefficients)
     expect_equal(s1$coefficients[na, 1:2], s2$coefficients[na, 1:2],
-                 label = lab, tolerance = 1e-7)
+                 label = lab, tolerance = sqrt(1e-7))
 
     # may also differ as the weights are not computed at the final estimates
     expect_equal(s1$dispersion, s2$dispersion, label = lab,
