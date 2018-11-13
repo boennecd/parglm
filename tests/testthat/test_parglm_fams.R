@@ -56,6 +56,15 @@ sim_func <- function(family, n, p){
       X[, i] <- rnorm(n, 0, sds[i])
     y <- rgamma(n, family$linkinv(rowSums(X) + 6))
 
+  }  else if(nam %in% c("poissonlog", "poissonidentity", "poissonsqrt")){
+    sds <- p:1
+    sds <- sqrt(sds^2 / sum(sds^2))
+    X <- matrix(nrow = n, ncol = p)
+    set.seed(77311413)
+    for(i in 1:p)
+      X[, i] <- rnorm(n, 0, sds[i])
+    y <- rpois(n, family$linkinv(rowSums(X) + 4))
+
   } else
     stop("family not implemented")
 
@@ -69,7 +78,8 @@ test_that("works with different families", {
   for(fa in list(
     binomial("logit"), binomial("probit"), binomial("cauchit"),
     binomial("cloglog"), gaussian("identity"), gaussian("inverse"),
-    gaussian("log"), Gamma("identity"), Gamma("log"))){
+    gaussian("log"), Gamma("identity"), Gamma("log"),
+    poisson("log"), poisson("sqrt"))){
     tmp <- sim_func(fa, n, p)
     X <- tmp$X
     y <- tmp$y

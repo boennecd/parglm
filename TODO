@@ -1,4 +1,4 @@
 check error in `gaussian_inverse::initialize`, `gaussian_log::initialize`,
 and `inverse_gaussian_...`
 make it possible to use start values
-test `Gamma("inverse")` and `binomial("log")`
+test `Gamma("inverse")`, poisson("identity"), and `binomial("log")`

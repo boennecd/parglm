@@ -295,7 +295,7 @@ std::string gaussian_inverse::name() const {
 /*----------------------------------------------------------------------------*/
 
 inline double poisson_dev_resids(double y, double mu, double wt){
-  double res = (y > 0) ? y * std::log(y / mu) - (y - mu) : mu * wt;
+  double res = (y > 0) ? wt * (y * std::log(y / mu) - (y - mu)) : mu * wt;
   return 2 * res;
 }
 
