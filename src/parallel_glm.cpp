@@ -3,6 +3,8 @@
 #include "parallel_qr.h"
 #include "family.h"
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
 /* data holder class */
 class data_holder_base {
 public:
@@ -44,7 +46,6 @@ class parallelglm_class_QR {
   using uword = arma::uword;
 
   class glm_qr_data_generator : public qr_data_generator {
-    static constexpr double zero_eps = 1e-100;
 
     const uword i_start, i_end;
     data_holder_base &data;
@@ -72,9 +73,7 @@ class parallelglm_class_QR {
       for(uword i = 0; i < eta.n_elem; ++i, ++e, ++mev)
         *mev = data.family.mu_eta(*e);
 
-      arma::uvec good = arma::find(
-        (weight > 0) %
-          ((-zero_eps < mu_eta_val) + (mu_eta_val < zero_eps) != 2));
+      arma::uvec good = arma::find((weight > 0) % (mu_eta_val != 0.));
 
       mu = mu(good);
       eta = eta(good);
@@ -228,7 +227,7 @@ public:
         break;
     }
 
-    return { beta, *R_f_out.get(), dev, i + 1L, i < it_max };
+    return { beta, *R_f_out.get(), dev, MIN(i + 1L, it_max), i < it_max };
   }
 
   static R_F get_R_f(data_holder_base &data, qr_parallel &pool){

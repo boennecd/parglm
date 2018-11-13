@@ -34,7 +34,7 @@ std::unique_ptr<glm_base> get_fam_obj(const std::string family);
       double variance(double) const override;                   \
       double mu_eta(double) const override;                     \
       double initialize(double, double) const override;         \
-      std::string name() const override;                            \
+      std::string name() const override;                        \
     };
 
 GLM_CLASS(binomial_logit)
@@ -42,5 +42,22 @@ GLM_CLASS(binomial_probit)
 GLM_CLASS(binomial_cauchit)
 GLM_CLASS(binomial_log)
 GLM_CLASS(binomial_cloglog)
+
+GLM_CLASS(gaussian_identity)
+GLM_CLASS(gaussian_log)
+GLM_CLASS(gaussian_inverse)
+
+GLM_CLASS(Gamma_inverse)
+GLM_CLASS(Gamma_identity)
+GLM_CLASS(Gamma_log)
+
+GLM_CLASS(poisson_log)
+GLM_CLASS(poisson_identity)
+GLM_CLASS(poisson_sqrt)
+
+GLM_CLASS(inverse_gaussian_1_mu_2)
+GLM_CLASS(inverse_gaussian_inverse)
+GLM_CLASS(inverse_gaussian_identity)
+GLM_CLASS(inverse_gaussian_log)
 
 #endif
