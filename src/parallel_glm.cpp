@@ -63,9 +63,9 @@ class parallelglm_class_QR {
       arma::vec y     (data.Ys.begin()      + i_start           , n, false);
       arma::vec weight(data.weights.begin() + i_start           , n, false);
       arma::vec offset(data.offsets.begin() + i_start           , n, false);
-      arma::mat X     (data.X.begin() + i_start * data.p, data.p, n);
       arma::vec eta   (data.eta.begin()     + i_start           , n, false);
       arma::vec mu    (data.mu.begin()      + i_start           , n, false);
+      arma::mat X = data.X.rows(i_start, i_end);
 
       /* compute values for QR computation */
       arma::vec mu_eta_val(eta.n_elem);
@@ -88,9 +88,8 @@ class parallelglm_class_QR {
       arma::vec w = arma::sqrt(
         (weight(good) % arma::square(mu_eta_val)) / var);
 
-      X = X.cols(good);
-      X.each_row() %= w;
-      arma::inplace_trans(X);
+      X = X.rows(good);
+      X.each_col() %= w;
       z %= w;
 
       arma::mat dev_mat; dev_mat = 0.; /* we compute this later */
@@ -115,8 +114,6 @@ class parallelglm_class_QR {
 
       arma::vec eta(data.eta.begin() + i_start                 , n, false, true);
       arma::vec mu (data.mu.begin()  + i_start                 , n, false, true);
-
-      arma::mat X  (data.X.begin()   + i_start * data.p, data.p, n, false);
       arma::vec y     (data.Ys.begin()      + i_start          , n, false);
       arma::vec weight(data.weights.begin() + i_start          , n, false);
       arma::vec offset(data.offsets.begin() + i_start          , n, false);
@@ -129,7 +126,7 @@ class parallelglm_class_QR {
           *eta_i = data.family.initialize(*y_i, *wt);
 
       } else
-        eta = (data.beta->t() * X).t() + offset;
+        eta = data.X.rows(i_start, i_end) * *data.beta + offset;
 
       double *e = eta.begin();
       for(auto m = mu.begin(); m != mu.end(); ++m, ++e)
@@ -151,7 +148,7 @@ class parallelglm_class_QR {
                              qr_parallel &pool, const bool use_start){
     std::vector<std::future<double> > futures;
 
-    uword n = data.X.n_cols, i_start = 0, i_end = 0.;
+    uword n = data.X.n_rows, i_start = 0, i_end = 0.;
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
       futures.push_back(
@@ -175,8 +172,8 @@ public:
       arma::vec &offsets, const glm_base &family, double tol,
       int nthreads, arma::uword it_max, bool trace,
       arma::uword block_size = 10000, const bool use_start = false){
-    uword p = X.n_rows;
-    uword n = X.n_cols;
+    uword p = X.n_cols;
+    uword n = X.n_rows;
     data_holder_base data(X, Ys, weights, offsets, nthreads, p, n, family,
                           block_size);
 
@@ -233,7 +230,7 @@ public:
 
   static R_F get_R_f(data_holder_base &data, qr_parallel &pool){
     // setup generators
-    uword n = data.X.n_cols, i_start = 0, i_end = 0.;
+    uword n = data.X.n_rows, i_start = 0, i_end = 0.;
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
       pool.submit(

@@ -71,7 +71,7 @@ parglm.fit <- function(
 
   use_start <- !is.null(start)
   fit <- parallelglm(
-    X = t(x), Ys = y, family = paste0(family$family, "_", family$link),
+    X = x, Ys = y, family = paste0(family$family, "_", family$link),
     start = if(use_start) start else numeric(ncol(x)), weights = weights,
     offsets = offset, tol = control$epsilon, nthreads = control$nthreads,
     it_max = control$maxit, trace = control$trace, block_size = block_size,
