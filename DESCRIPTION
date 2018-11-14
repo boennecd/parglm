@@ -12,5 +12,5 @@ LazyData: true
 LinkingTo: Rcpp, RcppArmadillo
 Imports: Rcpp, RcppArmadillo
 SystemRequirements: C++11
-Suggests: testthat
+Suggests: testthat, SuppDists
 RoxygenNote: 6.0.1

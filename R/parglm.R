@@ -5,7 +5,7 @@ NULL
 #' @export
 parglm <- function(
   formula, family = gaussian, data, weights, subset,
-  na.action, start = NULL, etastart, mustart, offset, control = list(...),
+  na.action, start = NULL, offset, control = list(...),
   contrasts = NULL, model = TRUE, x = FALSE, y = TRUE, ...){
   cl <- match.call()
   cl[[1L]] <- quote(glm)
@@ -37,6 +37,11 @@ parglm.fit <- function(
   .check_fam(family)
   stopifnot(nrow(x) == length(y))
 
+  if(!is.null(mustart))
+    warning(sQuote("mustart"), " will not be used")
+  if(!is.null(etastart))
+    warning(sQuote("etastart"), " will not be used")
+
   #####
   # like in `glm.fit`
   control <- do.call("parglm.control", control)
@@ -61,14 +66,16 @@ parglm.fit <- function(
   block_size <- if(!is.null(control$block_size))
     control$block_size else
       if(control$nthreads > 1L)
-        max(nrow(X) / (2L * control$nthreads), control$nthreads) else
-          nrow(X)
+        max(nrow(x) / (2L * control$nthreads), control$nthreads) else
+          nrow(x)
 
+  use_start <- !is.null(start)
   fit <- parallelglm(
-    X = t(x), Ys = y, family = paste0(family$family, "_", family$link), beta0 =
-      numeric(ncol(x)), weights = weights, offsets = offset, tol =
-      control$epsilon, nthreads = control$nthreads, it_max = control$maxit,
-    trace = control$trace, block_size = block_size)
+    X = t(x), Ys = y, family = paste0(family$family, "_", family$link),
+    start = if(use_start) start else numeric(ncol(x)), weights = weights,
+    offsets = offset, tol = control$epsilon, nthreads = control$nthreads,
+    it_max = control$maxit, trace = control$trace, block_size = block_size,
+    use_start = use_start)
 
   #####
   # compute objects as in `glm.fit`
@@ -146,7 +153,6 @@ parglm.fit <- function(
       sapply(parglm_supported(), function(x) paste(x$family, x$link)))
 }
 
-#' @export
 parglm_supported <- function()
   list(
     gaussian("identity"), gaussian("log"), gaussian("inverse"),
@@ -156,7 +162,7 @@ parglm_supported <- function()
 
     Gamma("inverse"), Gamma("identity"), Gamma("log"),
 
-    poisson("log"), poisson("inverse"), poisson("sqrt"),
+    poisson("log"), poisson("identity"), poisson("sqrt"),
 
     inverse.gaussian("1/mu^2"), inverse.gaussian("inverse"),
     inverse.gaussian("identity"), inverse.gaussian("log"))

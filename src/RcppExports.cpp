@@ -7,15 +7,15 @@
 using namespace Rcpp;
 
 // parallelglm
-Rcpp::List parallelglm(arma::mat& X, arma::vec& Ys, std::string family, arma::vec beta0, arma::vec& weights, arma::vec& offsets, double tol, int nthreads, int it_max, bool trace, arma::uword block_size);
-RcppExport SEXP _parglm_parallelglm(SEXP XSEXP, SEXP YsSEXP, SEXP familySEXP, SEXP beta0SEXP, SEXP weightsSEXP, SEXP offsetsSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP it_maxSEXP, SEXP traceSEXP, SEXP block_sizeSEXP) {
+Rcpp::List parallelglm(arma::mat& X, arma::vec& Ys, std::string family, arma::vec start, arma::vec& weights, arma::vec& offsets, double tol, int nthreads, int it_max, bool trace, arma::uword block_size, const bool use_start);
+RcppExport SEXP _parglm_parallelglm(SEXP XSEXP, SEXP YsSEXP, SEXP familySEXP, SEXP startSEXP, SEXP weightsSEXP, SEXP offsetsSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP it_maxSEXP, SEXP traceSEXP, SEXP block_sizeSEXP, SEXP use_startSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat& >::type X(XSEXP);
     Rcpp::traits::input_parameter< arma::vec& >::type Ys(YsSEXP);
     Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type beta0(beta0SEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type start(startSEXP);
     Rcpp::traits::input_parameter< arma::vec& >::type weights(weightsSEXP);
     Rcpp::traits::input_parameter< arma::vec& >::type offsets(offsetsSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
@@ -23,13 +23,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type it_max(it_maxSEXP);
     Rcpp::traits::input_parameter< bool >::type trace(traceSEXP);
     Rcpp::traits::input_parameter< arma::uword >::type block_size(block_sizeSEXP);
-    rcpp_result_gen = Rcpp::wrap(parallelglm(X, Ys, family, beta0, weights, offsets, tol, nthreads, it_max, trace, block_size));
+    Rcpp::traits::input_parameter< const bool >::type use_start(use_startSEXP);
+    rcpp_result_gen = Rcpp::wrap(parallelglm(X, Ys, family, start, weights, offsets, tol, nthreads, it_max, trace, block_size, use_start));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_parglm_parallelglm", (DL_FUNC) &_parglm_parallelglm, 11},
+    {"_parglm_parallelglm", (DL_FUNC) &_parglm_parallelglm, 12},
     {NULL, NULL, 0}
 };
 

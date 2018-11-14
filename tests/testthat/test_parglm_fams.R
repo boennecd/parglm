@@ -16,18 +16,12 @@ sim_func <- function(family, n, p){
     X <- matrix(nrow = n, ncol = p)
     set.seed(77311413)
     for(i in 1:p)
-      X[, i] <- rnorm(n, 1/p, sds[i])
-    y <- family$linkinv(rowSums(X)) > runif(n)
+      X[, i] <- rnorm(n, 0, sds[i])
+    y <- family$linkinv(rowSums(X) + 1) > runif(n)
 
   } else if(nam %in% "binomiallog"){
-    c <- matrix(rnorm(n * p, mean = -1/log(p), sd = 1/sqrt(p)), n)
-    fac <- rowSums(X)
-    mif <- log(.0001)
-    maf <- log(.9999)
-    fac <- ifelse(fac < mif | fac > maf, fac, 1)
-    X <- X / fac
-
-    y <- family$linkinv(rowSums(X)) > runif(n)
+    X <- matrix(runif(n * p, -1 / (4 * p), 1 / (4 * p)), n) - 3/(2 * p)
+    y <- family$linkinv(rowSums(X) + 1) > runif(n)
 
   } else if(nam %in% c("gaussianidentity", "gaussianlog")){
     sds <- p:1
@@ -35,8 +29,8 @@ sim_func <- function(family, n, p){
     X <- matrix(nrow = n, ncol = p)
     set.seed(77311413)
     for(i in 1:p)
-      X[, i] <- rnorm(n, 0, sds[i])
-    y <- rnorm(n, family$linkinv(rowSums(X) + 6))
+      X[, i] <- rnorm(n, 5/p, sds[i])
+    y <- rnorm(n, family$linkinv(rowSums(X) + 1))
 
   } else if(nam %in% c("gaussianinverse")){
     sds <- p:1
@@ -44,8 +38,8 @@ sim_func <- function(family, n, p){
     X <- matrix(nrow = n, ncol = p)
     set.seed(77311413)
     for(i in 1:p)
-      X[, i] <- rnorm(n, 0, sds[i])
-    y <- rnorm(n, family$linkinv(rowSums(X)))
+      X[, i] <- rnorm(n, -1/p, sds[i])
+    y <- rnorm(n, family$linkinv(rowSums(X) + 1))
 
   } else if(nam %in% c("Gammainverse", "Gammaidentity", "Gammalog")){
     sds <- p:1
@@ -53,8 +47,8 @@ sim_func <- function(family, n, p){
     X <- matrix(nrow = n, ncol = p)
     set.seed(77311413)
     for(i in 1:p)
-      X[, i] <- rnorm(n, 0, sds[i])
-    y <- rgamma(n, family$linkinv(rowSums(X) + 6))
+      X[, i] <- rnorm(n, 5/p, sds[i])
+    y <- rgamma(n, family$linkinv(rowSums(X) + 1))
 
   }  else if(nam %in% c("poissonlog", "poissonidentity", "poissonsqrt")){
     sds <- p:1
@@ -62,14 +56,41 @@ sim_func <- function(family, n, p){
     X <- matrix(nrow = n, ncol = p)
     set.seed(77311413)
     for(i in 1:p)
-      X[, i] <- rnorm(n, 0, sds[i])
-    y <- rpois(n, family$linkinv(rowSums(X) + 4))
+      X[, i] <- rnorm(n, 4/p, sds[i])
+    y <- rpois(n, family$linkinv(rowSums(X) + 1))
 
-  } else
-    stop("family not implemented")
+  } else if(nam %in% c("inverse.gaussian1/mu^2", "inverse.gaussianinverse",
+                       "inverse.gaussianidentity", "inverse.gaussianlog")){
+    set.seed(77311413)
+    X <- matrix(runif(n * p, 1e-5, 1/p), nrow = n, ncol = p)
+    y <- SuppDists::rinvGauss(n, family$linkinv(rowSums(X) + 1), 1)
+
+  } else stop("family not implemented")
 
   list(X = X, y = y)
 }
+
+test_expr <- expression({
+  expect_equal(f1[to_check], f2[to_check], label = lab)
+  # these may differ as `glm.fit` uses the weights from the iteration prior
+  # to convergence
+  expect_equal(f1$weights, f2$weights, tolerance = sqrt(1e-7), label = lab)
+
+  s2 <- summary(f2)
+  s1 <- summary(f1)
+
+  excl <- c("call", "coefficients", "cov.unscaled", "cov.scaled",
+            "dispersion")
+  expect_equal(s1[!names(s1) %in% excl], s2[!names(s2) %in% excl],
+               label = lab, tolerance = 1e-7)
+  na <- rownames(s1$coefficients)
+  expect_equal(s1$coefficients[na, 1:2], s2$coefficients[na, 1:2],
+               label = lab, tolerance = sqrt(1e-7))
+
+  # may also differ as the weights are not computed at the final estimates
+  expect_equal(s1$dispersion, s2$dispersion, label = lab,
+               tolerance = sqrt(1e-7))
+})
 
 test_that("works with different families", {
   n <- 1000L
@@ -77,119 +98,117 @@ test_that("works with different families", {
   set.seed(77311413)
   for(fa in list(
     binomial("logit"), binomial("probit"), binomial("cauchit"),
-    binomial("cloglog"), gaussian("identity"), gaussian("inverse"),
-    gaussian("log"), Gamma("identity"), Gamma("log"),
-    poisson("log"), poisson("sqrt"))){
+    binomial("cloglog"),
+
+    gaussian("identity"), gaussian("inverse"),
+    gaussian("log"),
+
+    Gamma("identity"), Gamma("log"),
+
+    poisson("log"), poisson("sqrt")))
+  {
     tmp <- sim_func(fa, n, p)
-    X <- tmp$X
-    y <- tmp$y
+    df <- data.frame(y = tmp$y, tmp$X)
 
     #####
     # no weights, no offset
     lab <- paste0(fa$family, "_", fa$link)
+    frm <- y ~ X1 + X2 + X3 + X4 + X5
     suppressWarnings({
-      f2 <- glm(y ~ X, family = fa)
-      f1 <- parglm(y ~ X, family = fa, control = parglm.control(nthreads = 2))
+      f2 <- glm(frm, family = fa, data = df)
+      f1 <- parglm(frm, family = fa, data = df,
+                   control = parglm.control(nthreads = 2))
     })
 
-    expect_equal(f1[to_check], f2[to_check], label = lab)
-    # these may differ as `glm.fit` uses the weights from the iteration prior
-    # to convergence
-    expect_equal(f1$weights, f2$weights, tolerance = sqrt(1e-7), label = lab)
-
-    s2 <- summary(f2)
-    s1 <- summary(f1)
-
-    excl <- c("call", "coefficients", "cov.unscaled", "cov.scaled",
-              "dispersion")
-    expect_equal(s1[!names(s1) %in% excl], s2[!names(s2) %in% excl],
-                 label = lab, tolerance = 1e-7)
-    na <- rownames(s1$coefficients)
-    expect_equal(s1$coefficients[na, 1:2], s2$coefficients[na, 1:2],
-                 label = lab, tolerance = sqrt(1e-7))
-
-    # may also differ as the weights are not computed at the final estimates
-    expect_equal(s1$dispersion, s2$dispersion, label = lab,
-                 tolerance = sqrt(1e-7))
+    eval(test_expr)
 
     #####
     # no weights, offset
     lab <- paste0(fa$family, "_", fa$link, " w/ offset")
+    frm_off <- update(frm, . ~ . - X1)
     suppressWarnings({
-      f2 <- glm(y ~ X[, -1], family = fa, offset = X[, 1])
-      f1 <- parglm(y ~ X[, -1], family = fa, offset = X[, 1],
+      f2 <- glm(frm_off, family = fa, offset = X1, data = df)
+      f1 <- parglm(frm_off, family = fa, offset = X1, data = df,
                    control = parglm.control(nthreads = 2))
     })
 
-    expect_equal(f1[to_check], f2[to_check], label = lab)
-    # these may differ as `glm.fit` uses the weights from the iteration prior
-    # to convergence
-    expect_equal(f1$weights, f2$weights, tolerance = sqrt(1e-7), label = lab)
-
-    s2 <- summary(f2)
-    s1 <- summary(f1)
-
-    expect_equal(s1[!names(s1) %in% excl], s2[!names(s2) %in% excl],
-                 label = lab)
-    na <- rownames(s1$coefficients)
-    expect_equal(s1$coefficients[na, 1:2], s2$coefficients[na, 1:2],
-                 label = lab, tolerance = sqrt(1e-7))
-
-    # may also differ as the weights are not computed at the final estimates
-    expect_equal(s1$dispersion, s2$dispersion, label = lab,
-                 tolerance = sqrt(1e-7))
+    eval(test_expr)
 
     #####
     # weights, no offset
     lab <- paste0(fa$family, "_", fa$link, " w/ weigths")
     w <- runif(n)
-    w <- n * w / sum(w)
+    df$w <- n * w / sum(w)
     suppressWarnings({
-      f2 <- glm(y ~ X, family = fa, weights = w)
-      f1 <- parglm(y ~ X, family = fa, weights = w,
+      f2 <- glm(frm, family = fa, weights = w, data = df)
+      f1 <- parglm(frm, family = fa, weights = w, data = df,
                    control = parglm.control(nthreads = 2))
     })
 
-    expect_equal(f1[to_check], f2[to_check], label = lab)
-    # these may differ as `glm.fit` uses the weights from the iteration prior
-    # to convergence
-    expect_equal(f1$weights, f2$weights, tolerance = sqrt(1e-7), label = lab)
-
-    s2 <- summary(f2)
-    s1 <- summary(f1)
-
-    expect_equal(s1[!names(s1) %in% excl], s2[!names(s2) %in% excl],
-                 label = lab)
-    na <- rownames(s1$coefficients)
-    expect_equal(s1$coefficients[na, 1:2], s2$coefficients[na, 1:2],
-                 label = lab, tolerance = sqrt(1e-7))
-
-    # may also differ as the weights are not computed at the final estimates
-    expect_equal(s1$dispersion, s2$dispersion, label = lab,
-                 tolerance = sqrt(1e-7))
+    eval(test_expr)
   }
 })
 
 
+test_that("works with different families w/ starting values", {
+  n <- 1000L
+  p <- 5L
+  set.seed(77311413)
+  for(fa in list(
+    binomial("logit"), binomial("probit"), binomial("cauchit"),
+    binomial("cloglog"), binomial("log"),
 
+    gaussian("identity"), gaussian("inverse"),
+    gaussian("log"),
 
-n <- 1000L
-p <- 20L
-li <- binomial("logit")
-sds <- p:1
-sds <- sqrt(sds^2 / sum(sds^2))
-X <- matrix(nrow = n, ncol = p)
-for(i in 1:p)
-  X[, i] <- rnorm(n, 1/p, sds[i])
-y <- 1/(1 + exp(-(1 - rowSums(X)))) > runif(n)
+    Gamma("identity"), Gamma("log"), Gamma("log"),
 
-microbenchmark::microbenchmark(
-  f1 = f1 <- glm(y ~ X, binomial()),
-  f2.1 = f2 <- parglm(y ~ X, binomial(), control = parglm.control(nthreads = 1)),
-  f2.2 = f2 <- parglm(y ~ X, binomial(), control = parglm.control(nthreads = 2)),
-  f2.4 = f2 <- parglm(y ~ X, binomial(), control = parglm.control(nthreads = 4)),
-  times = 10)
+    poisson("log"), poisson("sqrt"), poisson("identity"),
 
-f2.4 = f2 <- parglm(y ~ X, binomial(), control = parglm.control(nthreads = 4))
+    inverse.gaussian("1/mu^2"), inverse.gaussian("inverse"),
+    inverse.gaussian("identity"), inverse.gaussian("log")))
+  {
+    tmp <- sim_func(fa, n, p)
+    df <- data.frame(y = tmp$y, tmp$X)
 
-qr.R(f2.4$qr)
+    #####
+    # no weights, no offset
+    lab <- paste0(fa$family, "_", fa$link)
+    sta <- rep(1, p + 1L)
+    frm <- y ~ X1 + X2 + X3 + X4 + X5
+    suppressWarnings({
+      f2 <- glm(frm, family = fa, start = sta, data = df)
+      f1 <- parglm(frm, family = fa, data = df,
+                   control = parglm.control(nthreads = 2), start = sta)
+    })
+
+    eval(test_expr)
+
+    #####
+    # no weights, offset
+    lab <- paste0(fa$family, "_", fa$link, " w/ offset")
+    sta <- rep(1, p)
+    frm_off <- update(frm, . ~ . - X1)
+    suppressWarnings({
+      f2 <- glm(frm_off, family = fa, offset = X1, start = sta, data = df)
+      f1 <- parglm(frm_off, family = fa, offset = X1, data = df,
+                   control = parglm.control(nthreads = 2), start = sta)
+    })
+
+    eval(test_expr)
+
+    #####
+    # weights, no offset
+    lab <- paste0(fa$family, "_", fa$link, " w/ weigths")
+    w <- runif(n)
+    df$w <- n * w / sum(w)
+    sta <- rep(1, p + 1L)
+    suppressWarnings({
+      f2 <- glm(frm, family = fa, weights = w, start = sta, data = df)
+      f1 <- parglm(frm, family = fa, weights = w, start = sta, data = df,
+                   control = parglm.control(nthreads = 2))
+    })
+
+    eval(test_expr)
+  }
+})

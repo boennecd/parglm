@@ -665,7 +665,7 @@ std::unique_ptr<glm_base> get_fam_obj(const std::string family){
   if(family == "poisson_sqrt")
     return std::unique_ptr<glm_base>(new poisson_sqrt());
 
-  if(family == "inverse.gaussian_1_mu_2")
+  if(family == "inverse.gaussian_1/mu^2")
     return std::unique_ptr<glm_base>(new inverse_gaussian_1_mu_2());
   if(family == "inverse.gaussian_inverse")
     return std::unique_ptr<glm_base>(new inverse_gaussian_inverse());
