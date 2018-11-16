@@ -3,6 +3,7 @@
 NULL
 
 #' @export
+#' @importFrom stats glm
 parglm <- function(
   formula, family = gaussian, data, weights, subset,
   na.action, start = NULL, offset, control = list(...),
@@ -66,7 +67,7 @@ parglm.fit <- function(
   block_size <- if(!is.null(control$block_size))
     control$block_size else
       if(control$nthreads > 1L)
-        max(nrow(x) / (2L * control$nthreads), control$nthreads) else
+        max(nrow(x) / control$nthreads, control$nthreads) else
           nrow(x)
 
   use_start <- !is.null(start)

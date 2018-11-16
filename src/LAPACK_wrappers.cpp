@@ -15,9 +15,7 @@ QR_factorization::QR_factorization(const arma::mat &A):
   M(A.n_rows), N(A.n_cols), qr(new double[M * N]),
   qraux(new double[MIN(M, N)]), pivot_(new int[N]){
   // copy A
-  const double *a = A.memptr();
-  for(int i = 0; i < M * N; ++i, ++a)
-    qr[i] = *a;
+  std::memcpy(qr.get(), A.memptr(), M * N * sizeof(double));
 
   /* initalize */
   for(int i = 0; i < N; ++i)

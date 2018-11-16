@@ -1,16 +1,23 @@
 Package: parglm
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Parallel GLM
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Authors@R: person("Benjamin", "Christoffersen", 
+                  email = "boennecd@gmail.com", 
+                  role = c("cre", "aut"))
+Description: Provides a parallel estimation method  for generalized 
+  linear models without compiling with a multithreaded LAPACK or BLAS.
+License:  GPL-2
 Encoding: UTF-8
 LazyData: true
 LinkingTo: Rcpp, RcppArmadillo
 Imports: Rcpp, RcppArmadillo
 SystemRequirements: C++11
-Suggests: testthat, SuppDists
+Suggests: testthat, 
+    SuppDists,
+    knitr,
+    rmarkdown, 
+    speedglm, 
+    microbenchmark
 RoxygenNote: 6.0.1
+VignetteBuilder: R.rsp

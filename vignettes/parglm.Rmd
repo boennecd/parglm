@@ -1,0 +1,90 @@
+---
+title: "Introduction to the paglm package"
+author: "Benjamin Christoffersen"
+date: "`r Sys.Date()`"
+output: rmarkdown::pdf_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
+```
+
+The motivation for the `parglm` package is a parallel version of the `glm` 
+function. It solves the iteratively re-weighted least Squares using a QR 
+decomposition with column pivoting with `DGEQP3` function from LAPACK. 
+The computation is done in parallel as in the `bam` function `mgcv`. The 
+cost is an additional $O(Mp^2 + p^3)$ where $p$ is the number of 
+coefficients and $M$ is the number chunks to be computed in parallel. More 
+one the latter shortly. The advantage is that you do not need an optimized 
+BLAS or LAPACK which support multithreading to perform the estimation.
+
+## Example of computation time
+
+```{r set_params, echo = FALSE}
+n <- 100000L
+p <- 50L
+n_threads <- 4L
+```
+
+Below, we perform estimate a logistic regression with `r n` observations 
+and `r p` covariates. We vary the number of cores being used with the
+`nthreads` argument to `parglm.control`.
+
+```{r sim_n_run, cache = 1}
+#####
+# simulate
+n # number of observations
+p # number of covariates
+X <- matrix(rnorm(n * p, 1/p, 1/sqrt(p)), n, ncol = p)
+set.seed(68024947)
+df <- data.frame(y = 1/(1 + exp(-(rowSums(X) - 1))) > runif(n), X)
+
+#####
+# compute and measure time. Setup call to make
+library(microbenchmark)
+library(speedglm)
+library(parglm)
+cl <- list(
+  quote(microbenchmark), 
+  glm      = quote(glm     (y ~ ., binomial(), df)), 
+  speedglm = quote(speedglm(y ~ ., family = binomial(), data = df)), 
+  times = 5L)
+cl <- c(
+  cl, lapply(1:n_threads, function(i) bquote(parglm(
+      y ~ ., binomial(), df, control = parglm.control(nthreads = .(i))))))
+names(cl)[5:(5L + n_threads - 1L)] <- paste0("parglm.", 1:n_threads)
+cl <- as.call(cl)
+cl # the call we make
+
+out <- eval(cl)
+out # result from `microbenchmark`
+```
+
+The plot below shows median run time versus the number of cores. The dashed line 
+is the median run time of `glm` and the dotted line is median run time of 
+`speedglm`.
+
+```{r show_run_times}
+par(mar = c(4.5, 4.5, .5, .5))
+o <- aggregate(time ~ expr, out, median)[, 2] / 10^9
+ylim <- range(o, 0); ylim[2] <- ylim[2] + .04 * diff(ylim)
+plot(1:n_threads, o[-(1:2)], xlab = "Number of cores", yaxs = "i",
+     ylim = ylim, ylab = "Run time", pch = 16)
+abline(h = o[1], lty = 2)
+abline(h = o[2], lty = 3)
+```
+
+It is worth mentioning that `speedglm` computes the cross product of the weighted design 
+matrix. This is advantages in terms of computation cost but may lead to unstable 
+solutions. 
+
+`parglm` does not at the moment handle close to singular problems 
+as "neatly" as `glm` where `glm` forces some elements to be excluded.
+
+## Session info
+
+```{r ses_info}
+sessionInfo()
+```
+

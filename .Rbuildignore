@@ -1,3 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-TODO
+^TODO$
+^\.sandbox\.R$
+
+vignettes/[^/\.]*\.(?!(pdf\.asis|pdf))
+vignettes/[^/]*/.*

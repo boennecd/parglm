@@ -151,6 +151,9 @@ class parallelglm_class_QR {
     uword n = data.X.n_rows, i_start = 0, i_end = 0.;
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
+      if(i_start == 0L)
+        /* add extra from the residual chunk */
+        i_end += n % data.block_size;
       futures.push_back(
         pool.th_pool.submit(worker(
           first_it and !use_start, data, i_start, i_end)));
@@ -233,6 +236,9 @@ public:
     uword n = data.X.n_rows, i_start = 0, i_end = 0.;
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
+      if(i_start == 0L)
+        /* add extra from the residual chunk */
+        i_end += n % data.block_size;
       pool.submit(
         std::unique_ptr<qr_data_generator>(
          new glm_qr_data_generator(i_start, i_end, data)));
