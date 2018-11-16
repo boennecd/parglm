@@ -3,6 +3,15 @@
 #include "parallel_qr.h"
 #include "family.h"
 
+/* #define PARGLM_PROF 1 */
+#ifdef PARGLM_PROF
+#include <gperftools/profiler.h>
+#include <iostream>
+#include <iomanip>
+#include <ctime>
+#include <sstream>
+#endif
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 /* data holder class */
@@ -35,7 +44,7 @@ public:
 
 struct parallelglm_res {
   const arma::vec coefficients;
-  const R_F R_F;
+  const ::R_F R_F;
   const double dev;
   const arma::uword n_iter;
   const bool conv;
@@ -254,11 +263,24 @@ Rcpp::List parallelglm(
     arma::vec &weights, arma::vec &offsets, double tol,
     int nthreads, int it_max, bool trace,  arma::uword block_size,
     const bool use_start){
+#ifdef PARGLM_PROF
+  std::stringstream ss;
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);
+  ss << std::put_time(&tm, "profile-%d-%m-%Y-%H-%M-%S.log");
+  Rcpp::Rcout << "Saving profile output to '" << ss.str() << "'" << std::endl;
+  const std::string s = ss.str();
+  ProfilerStart(s.c_str());
+#endif
 
   std::unique_ptr<glm_base> fam = get_fam_obj(family);
   auto result = parallelglm_class_QR::compute(
     X, start, Ys, weights, offsets, *fam, tol, nthreads, it_max,
     trace, block_size, use_start);
+
+#ifdef PARGLM_PROF
+  ProfilerStop();
+#endif
 
   return Rcpp::List::create(
     Rcpp::Named("coefficients") = Rcpp::wrap(result.coefficients),

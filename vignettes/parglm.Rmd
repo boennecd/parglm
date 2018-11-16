@@ -22,7 +22,7 @@ BLAS or LAPACK which support multithreading to perform the estimation.
 ## Example of computation time
 
 ```{r set_params, echo = FALSE}
-n <- 100000L
+n <- 1000000L
 p <- 50L
 n_threads <- 4L
 ```
@@ -36,8 +36,8 @@ and `r p` covariates. We vary the number of cores being used with the
 # simulate
 n # number of observations
 p # number of covariates
-X <- matrix(rnorm(n * p, 1/p, 1/sqrt(p)), n, ncol = p)
 set.seed(68024947)
+X <- matrix(rnorm(n * p, 1/p, 1/sqrt(p)), n, ncol = p)
 df <- data.frame(y = 1/(1 + exp(-(rowSums(X) - 1))) > runif(n), X)
 
 #####
