@@ -1,3 +1,5 @@
+[![Build Status on Travis](https://travis-ci.org/boennecd/parglm.svg?branch=master)](https://travis-ci.org/boennecd/parglm)
+
 parglm
 ======
 
