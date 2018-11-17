@@ -23,9 +23,9 @@ an optimized BLAS or LAPACK which supports multithreading.
 ## Example of computation time
 
 ```{r set_params, echo = FALSE}
-n <- 100000L
+n <- 1000000L
 p <- 50L
-n_threads <- 8L
+n_threads <- 18L
 ```
 
 Below, we perform estimate a logistic regression with `r n` observations 
@@ -53,7 +53,7 @@ cl <- list(
   quote(microbenchmark), 
   glm      = quote(glm     (y ~ ., binomial(), df)), 
   speedglm = quote(speedglm(y ~ ., family = binomial(), data = df)), 
-  times = 25L)
+  times = 5L)
 cl <- c(
   cl, lapply(1:n_threads, function(i) bquote(parglm(
       y ~ ., binomial(), df, control = parglm.control(nthreads = .(i))))))
