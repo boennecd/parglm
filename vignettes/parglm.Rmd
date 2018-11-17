@@ -2,12 +2,13 @@
 title: "Introduction to the paglm package"
 author: "Benjamin Christoffersen"
 date: "`r Sys.Date()`"
-output: rmarkdown::pdf_document
+output: rmarkdown::html_document
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
+options(digits = 10)
 ```
 
 The motivation for the `parglm` package is a parallel version of the `glm` 
@@ -24,7 +25,7 @@ an optimized BLAS or LAPACK which support multithreading.
 ```{r set_params, echo = FALSE}
 n <- 100000L
 p <- 50L
-n_threads <- 4L
+n_threads <- 8L
 ```
 
 Below, we perform estimate a logistic regression with `r n` observations 
@@ -52,7 +53,7 @@ cl <- list(
   quote(microbenchmark), 
   glm      = quote(glm     (y ~ ., binomial(), df)), 
   speedglm = quote(speedglm(y ~ ., family = binomial(), data = df)), 
-  times = 5L)
+  times = 25L)
 cl <- c(
   cl, lapply(1:n_threads, function(i) bquote(parglm(
       y ~ ., binomial(), df, control = parglm.control(nthreads = .(i))))))
@@ -66,7 +67,9 @@ out # result from `microbenchmark`
 
 The plot below shows median run times versus the number of cores. The dashed line 
 is the median run time of `glm` and the dotted line is median run time of 
-`speedglm`.
+`speedglm`. We could have used `glm.fit` and `parglm.fit`. This would make the 
+relative difference bigger as both call e.g., `model.matrix` and `model.frame` which 
+do take some time.
 
 ```{r show_run_times}
 par(mar = c(4.5, 4.5, .5, .5))
@@ -85,9 +88,13 @@ with the `block_size` argument of `parglm.control`.
 
 `parglm` does not at the moment handle close to singular problems 
 as "neatly" as `glm` where `glm` forces some elements to be excluded. The 
-single threaded performance of `parglm` is slower when there are more coefficients 
-as seen above. The reason seems so be the `qr.qty` method in LAPACK, `dormqr`, which is slower
-then the LINPACK method, `dqrsl`, as illustrated below.
+single threaded performance of `parglm` may be slower when there are more coefficients. 
+The cause seems to be the difference between the LAPACK and LINPACK implementation. 
+This can either be due to QR decomposition method or the `qr.qty` method. 
+On Windows, the `parglm` do seems slower when build with `Rtools` and the reason 
+seems so be the `qr.qty` method in LAPACK, `dormqr`, which is slower then the 
+LINPACK method, `dqrsl`. Below is an illustration of the 
+cost on this machine. 
 
 ```{r check_qr_qty, cache = 1}
 qr1 <- qr(X)

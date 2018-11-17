@@ -1,4 +1,4 @@
-check error in `gaussian_inverse::initialize`, `gaussian_log::initialize`,
-and `inverse_gaussian_...`
-make it possible to use start values
-test `Gamma("inverse")`, poisson("identity"), and `binomial("log")`
+make a function which can take a function input which yields the input for
+each chunk to allow for larger data sets
+make a method like `speedglm` which computes the cross product of the weighted
+design matrix which is faster but less stable

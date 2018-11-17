@@ -3,4 +3,4 @@
 ^TODO$
 ^\.sandbox\.R$
 ^\.travis\.yml$
-^vignettes/(?![^\.]*(\.pdf\.asis|\.pdf)$).*
+^vignettes/(?![^\.]*(\.html\.asis|\.html)$).*
