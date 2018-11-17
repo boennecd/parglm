@@ -1,7 +1,7 @@
 parglm
 ======
 
-The `parglm` is a package that provides a parallel estimation method  for generalized 
+The `parglm` package provides a parallel estimation method  for generalized 
 linear models without compiling with a multithreaded LAPACK or BLAS. You can install
 it from Github by calling:
 

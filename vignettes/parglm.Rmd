@@ -11,18 +11,18 @@ knitr::opts_chunk$set(
 ```
 
 The motivation for the `parglm` package is a parallel version of the `glm` 
-function. It solves the iteratively re-weighted least Squares using a QR 
+function. It solves the iteratively re-weighted least squares using a QR 
 decomposition with column pivoting with `DGEQP3` function from LAPACK. 
-The computation is done in parallel as in the `bam` function `mgcv`. The 
+The computation is done in parallel as in the `bam` function in the `mgcv` package. The 
 cost is an additional $O(Mp^2 + p^3)$ where $p$ is the number of 
-coefficients and $M$ is the number chunks to be computed in parallel. More 
-one the latter shortly. The advantage is that you do not need an optimized 
-BLAS or LAPACK which support multithreading to perform the estimation.
+coefficients and $M$ is the number chunks to be computed in parallel. 
+The advantage is that you do not need to compile the package with 
+an optimized BLAS or LAPACK which support multithreading.
 
 ## Example of computation time
 
 ```{r set_params, echo = FALSE}
-n <- 1000000L
+n <- 100000L
 p <- 50L
 n_threads <- 4L
 ```
@@ -31,7 +31,7 @@ Below, we perform estimate a logistic regression with `r n` observations
 and `r p` covariates. We vary the number of cores being used with the
 `nthreads` argument to `parglm.control`.
 
-```{r sim_n_run, cache = 1}
+```{r sim}
 #####
 # simulate
 n # number of observations
@@ -39,7 +39,10 @@ p # number of covariates
 set.seed(68024947)
 X <- matrix(rnorm(n * p, 1/p, 1/sqrt(p)), n, ncol = p)
 df <- data.frame(y = 1/(1 + exp(-(rowSums(X) - 1))) > runif(n), X)
+```
 
+
+```{r run, cache = 1}
 #####
 # compute and measure time. Setup call to make
 library(microbenchmark)
@@ -61,7 +64,7 @@ out <- eval(cl)
 out # result from `microbenchmark`
 ```
 
-The plot below shows median run time versus the number of cores. The dashed line 
+The plot below shows median run times versus the number of cores. The dashed line 
 is the median run time of `glm` and the dotted line is median run time of 
 `speedglm`.
 
@@ -77,10 +80,25 @@ abline(h = o[2], lty = 3)
 
 It is worth mentioning that `speedglm` computes the cross product of the weighted design 
 matrix. This is advantages in terms of computation cost but may lead to unstable 
-solutions. 
+solutions. You can alter the number of observations in each parallel chunk 
+with the `block_size` argument of `parglm.control`.
 
 `parglm` does not at the moment handle close to singular problems 
-as "neatly" as `glm` where `glm` forces some elements to be excluded.
+as "neatly" as `glm` where `glm` forces some elements to be excluded. The 
+single threaded performance of `parglm` is slower when there are more coefficients 
+as seen above. The reason seems so be the `qr.qty` method in LAPACK, `dormqr`, which is slower
+then the LINPACK method, `dqrsl`, as illustrated below.
+
+```{r check_qr_qty, cache = 1}
+qr1 <- qr(X)
+qr2 <- qr(X, LAPACK = TRUE)
+microbenchmark::microbenchmark(
+  `qr LINPACK`     = qr(X), 
+  `qr LAPACK`      = qr(X, LAPACK = TRUE), 
+  `qr.qty LINPACK` = qr.qty(qr1, df$y), 
+  `qr.qty LAPACK`  = qr.qty(qr2, df$y), 
+  times = 25)
+```
 
 ## Session info
 
