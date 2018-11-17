@@ -237,7 +237,7 @@ public:
         break;
     }
 
-    return { beta, *R_f_out.get(), dev, MIN(i + 1L, it_max), i < it_max };
+    return { beta, *R_f_out.get(), dev, (arma::uword)MIN(i + 1L, it_max), i < it_max };
   }
 
   static R_F get_R_f(data_holder_base &data, qr_parallel &pool){
