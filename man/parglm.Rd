@@ -50,7 +50,7 @@ returned value.
 For \code{parglm.fit}: \code{x} is a design matrix of dimension \code{n * p}, and
 \code{y} is a vector of observations of length \code{n}.}
 
-\item{...}{For \code{parglm}: arguments to be used to form the default control argument
+\item{...}{For \code{parglm}: arguments to be used to form the default \code{control} argument
 if it is not supplied directly.
 
 For \code{parglm.fit}: unused.}
@@ -82,6 +82,5 @@ f1 <- glm   (lot1 ~ log(u), data = clotting, family = Gamma)
 f2 <- parglm(lot1 ~ log(u), data = clotting, family = Gamma,
              control = parglm.control(nthreads = 2L))
 all.equal(coef(f1), coef(f2))
-
 
 }

@@ -8,14 +8,14 @@ parglm.control(epsilon = 1e-08, maxit = 25, trace = FALSE,
   nthreads = 1L, block_size = NULL)
 }
 \arguments{
-\item{epsilon}{positive convergence tolerance \eqn{\epsilon}.}
+\item{epsilon}{positive convergence tolerance.}
 
 \item{maxit}{integer giving the maximal number of IWLS iterations.}
 
 \item{trace}{logical indicating if output should be produced doing estimation.}
 
 \item{nthreads}{number of cores to use. You may get the best performance by
-using your number of physical cores if you data set is sufficiently large.}
+using your number of physical cores if your data set is sufficiently large.}
 
 \item{block_size}{number of observation to include in each parallel block.}
 }

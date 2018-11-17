@@ -36,7 +36,7 @@ NULL
 #' @param contrasts	an optional list. See the \code{contrasts.arg} of
 #' \code{\link{model.matrix.default}}.
 #' @param intercept	logical. Should an intercept be included in the null model?
-#' @param ...	For \code{parglm}: arguments to be used to form the default control argument
+#' @param ...	For \code{parglm}: arguments to be used to form the default \code{control} argument
 #' if it is not supplied directly.
 #'
 #' For \code{parglm.fit}: unused.
@@ -58,7 +58,6 @@ NULL
 #'              control = parglm.control(nthreads = 2L))
 #' all.equal(coef(f1), coef(f2))
 #'
-#'
 #' @importFrom stats glm
 #' @export
 parglm <- function(
@@ -76,11 +75,11 @@ parglm <- function(
 #' @description
 #' Auxiliary function for \code{\link{parglm}} fitting.
 #'
-#' @param epsilon positive convergence tolerance \eqn{\epsilon}.
+#' @param epsilon positive convergence tolerance.
 #' @param maxit integer giving the maximal number of IWLS iterations.
 #' @param trace logical indicating if output should be produced doing estimation.
 #' @param nthreads number of cores to use. You may get the best performance by
-#' using your number of physical cores if you data set is sufficiently large.
+#' using your number of physical cores if your data set is sufficiently large.
 #' @param block_size number of observation to include in each parallel block.
 #'
 #' @return
