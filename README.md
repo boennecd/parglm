@@ -11,5 +11,5 @@ it from Github by calling:
 devtools::install_github("boennecd/parglm")
 ```
 
-See the [vignettes/parglm.pdf](vignettes/parglm.pdf) for an example of run times and 
+See the [vignettes/parglm.html](https://htmlpreview.github.io/?https://github.com/boennecd/parglm/blob/master/vignettes/parglm.html) for an example of run times and 
 further details.
