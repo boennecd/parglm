@@ -69,7 +69,21 @@ The plot below shows median run times versus the number of cores. The dashed lin
 is the median run time of `glm` and the dotted line is the median run time of 
 `speedglm`. We could have used `glm.fit` and `parglm.fit`. This would make the 
 relative difference bigger as both call e.g., `model.matrix` and `model.frame` which 
-do take some time.
+do take some time. To show this point, we first compute how much times this takes and 
+then we make the plot. The continuous line is the computation time of `model.matrix` and 
+`model.frame`.
+
+```{r loadmicro, echo = FALSE}
+library(microbenchmark) # in case the previous chunk is not run
+```
+
+```{r show_modmat_time, cache = 1}
+modmat_time <- microbenchmark(
+  modmat_time = {
+    mf <- model.frame(y ~ ., df); model.matrix(terms(mf), mf)
+  }, times = 10)
+modmat_time # time taken by `model.matrix` and `model.frame`
+```
 
 ```{r show_run_times}
 par(mar = c(4.5, 4.5, .5, .5))
@@ -79,6 +93,7 @@ plot(1:n_threads, o[-(1:2)], xlab = "Number of cores", yaxs = "i",
      ylim = ylim, ylab = "Run time", pch = 16)
 abline(h = o[1], lty = 2)
 abline(h = o[2], lty = 3)
+abline(h = median(modmat_time$time) / 10^9, lty = 1)
 ```
 
 It is worth mentioning that `speedglm` computes the cross product of the weighted design 
@@ -104,7 +119,7 @@ microbenchmark::microbenchmark(
   `qr LAPACK`      = qr(X, LAPACK = TRUE), 
   `qr.qty LINPACK` = qr.qty(qr1, df$y), 
   `qr.qty LAPACK`  = qr.qty(qr2, df$y), 
-  times = 25)
+  times = 5)
 ```
 
 ## Session info
