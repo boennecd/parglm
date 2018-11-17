@@ -2,3 +2,6 @@ make a function which can take a function input which yields the input for
 each chunk to allow for larger data sets
 make a method like `speedglm` which computes the cross product of the weighted
 design matrix which is faster but less stable
+the Armadillo `rows` may be slow when the copy is made? 
+there may be an overhead with the current abstract family class
+fix issue with order in `summary.glm`
