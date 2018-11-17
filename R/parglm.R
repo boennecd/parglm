@@ -2,8 +2,65 @@
 #' @importFrom Rcpp sourceCpp
 NULL
 
-#' @export
+#' @name parglm
+#' @title Fitting Generalized Linear Models in Parallel
+#'
+#' @description Function like \code{\link{glm}} which can make the computation
+#' in parallel. The function supports most families listed in \code{\link{family}}.
+#' See "\code{vignette("parglm", "parglm")}" for run time examples.
+#'
+#' @param formula an object of class \code{\link{formula}}.
+#' @param family a \code{\link{family}} object.
+#' @param data an optional data frame, list or environment containing the variables
+#' in the model.
+#' @param weights an optional vector of 'prior weights' to be used in the fitting process. Should
+#' be \code{NULL} or a numeric vector.
+#' @param subset	an optional vector specifying a subset of observations to be used in
+#' the fitting process.
+#' @param na.action a function which indicates what should happen when the data contain \code{NA}s.
+#' @param start starting values for the parameters in the linear predictor.
+#' @param etastart starting values for the linear predictor. Not supported.
+#' @param mustart starting values for the vector of means. Not supported.
+#' @param offset this can be used to specify an a priori known component to be
+#' included in the linear predictor during fitting.
+#' @param control	a list of parameters for controlling the fitting process.
+#' For parglm.fit this is passed to \code{\link{parglm.control}}.
+#' @param model	a logical value indicating whether model frame should be included
+#' as a component of the returned value.
+#' @param x,y For \code{parglm}: logical values indicating whether the response vector
+#' and model matrix used in the fitting process should be returned as components of the
+#' returned value.
+#'
+#' For \code{parglm.fit}: \code{x} is a design matrix of dimension \code{n * p}, and
+#' \code{y} is a vector of observations of length \code{n}.
+#' @param contrasts	an optional list. See the \code{contrasts.arg} of
+#' \code{\link{model.matrix.default}}.
+#' @param intercept	logical. Should an intercept be included in the null model?
+#' @param ...	For \code{parglm}: arguments to be used to form the default control argument
+#' if it is not supplied directly.
+#'
+#' For \code{parglm.fit}: unused.
+#'
+#' @return
+#' \code{glm} object as returned by \code{\link{glm}} but differs mainly by the \code{qr}
+#' element. The \code{qr} element in the object returned by \code{parglm}(\code{.fit}) only has the \eqn{R}
+#' matrix from the QR decomposition.
+#'
+#' @examples
+#' # small example from `help('glm')`. Fitting this model in parallel does
+#' # not matter as the data set is small
+#' clotting <- data.frame(
+#'   u = c(5,10,15,20,30,40,60,80,100),
+#'   lot1 = c(118,58,42,35,27,25,21,19,18),
+#'   lot2 = c(69,35,26,21,18,16,13,12,12))
+#' f1 <- glm   (lot1 ~ log(u), data = clotting, family = Gamma)
+#' f2 <- parglm(lot1 ~ log(u), data = clotting, family = Gamma,
+#'              control = parglm.control(nthreads = 2L))
+#' all.equal(coef(f1), coef(f2))
+#'
+#'
 #' @importFrom stats glm
+#' @export
 parglm <- function(
   formula, family = gaussian, data, weights, subset,
   na.action, start = NULL, offset, control = list(...),
@@ -14,6 +71,35 @@ parglm <- function(
   eval(cl, parent.frame())
 }
 
+#' @title Auxiliary for Controlling GLM Fitting in Parallel
+#'
+#' @description
+#' Auxiliary function for \code{\link{parglm}} fitting.
+#'
+#' @param epsilon positive convergence tolerance \eqn{\epsilon}.
+#' @param maxit integer giving the maximal number of IWLS iterations.
+#' @param trace logical indicating if output should be produced doing estimation.
+#' @param nthreads number of cores to use. You may get the best performance by
+#' using your number of physical cores if you data set is sufficiently large.
+#' @param block_size number of observation to include in each parallel block.
+#'
+#' @return
+#' A list with components named as the arguments.
+#'
+#' @examples
+#' # use one core
+#'clotting <- data.frame(
+#'  u = c(5,10,15,20,30,40,60,80,100),
+#'  lot1 = c(118,58,42,35,27,25,21,19,18),
+#'  lot2 = c(69,35,26,21,18,16,13,12,12))
+#' f1 <- parglm(lot1 ~ log(u), data = clotting, family = Gamma,
+#'              control = parglm.control(nthreads = 1L))
+#'
+#' # use two cores
+#' f2 <- parglm(lot1 ~ log(u), data = clotting, family = Gamma,
+#'              control = parglm.control(nthreads = 2L))
+#' all.equal(coef(f1), coef(f2))
+#'
 #' @export
 parglm.control <- function(
   epsilon = 1e-08, maxit = 25, trace = FALSE, nthreads = 1L,
@@ -29,6 +115,7 @@ parglm.control <- function(
        block_size = block_size)
 }
 
+#' @rdname parglm
 #' @importFrom stats gaussian binomial Gamma inverse.gaussian poisson
 #' @export
 parglm.fit <- function(
@@ -170,6 +257,6 @@ parglm_supported <- function()
 
 #' @importFrom Matrix qr.R
 #' @export
-qr.R.parglmqr <- function(qr, complete = FALSE){
-  qr$R
+qr.R.parglmqr <- function(x, ...){
+  x$R
 }

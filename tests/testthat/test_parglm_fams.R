@@ -93,6 +93,7 @@ test_expr <- expression({
 })
 
 test_that("works with different families", {
+  skip_if_not_installed("SuppDists")
   n <- 1000L
   p <- 5L
   set.seed(77311413)
@@ -151,6 +152,7 @@ test_that("works with different families", {
 
 
 test_that("works with different families w/ starting values", {
+  skip_if_not_installed("SuppDists")
   n <- 1000L
   p <- 5L
   set.seed(77311413)

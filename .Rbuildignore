@@ -2,4 +2,5 @@
 ^\.Rproj\.user$
 ^TODO$
 ^\.sandbox\.R$
+^\.travis\.yml$
 ^vignettes/(?![^\.]*(\.pdf\.asis|\.pdf)$).*
