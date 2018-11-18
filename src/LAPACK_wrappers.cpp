@@ -83,3 +83,47 @@ arma::uvec QR_factorization::pivot() const {
 
   return out;
 }
+
+dqrls_res
+  dqrls_wrap(const arma::mat &x, arma::vec &y, double tol)
+  {
+    int n = x.n_rows, p = x.n_cols, ny = 1L;
+
+    dqrls_res out {
+      x, arma::vec(p), 0L, arma::ivec(p), arma::vec(p), false
+    };
+
+    int &rank = out.rank;
+    arma::mat &qr = out.qr;
+    arma::ivec &pivot = out.pivot;
+    arma::vec &qraux = out.qraux, &coefficients = out.coefficients,
+      work(2L * p), residuals = y, effects = y;
+
+    R_BLAS_LAPACK::dqrls(
+      qr.memptr(), &n, &p, y.memptr(), &ny, &tol,
+      coefficients.memptr(), residuals.memptr(), effects.memptr(),
+      &rank, pivot.memptr(), qraux.memptr(), work.memptr());
+
+    bool &pivoted = out.pivoted;
+    for(int i = 0L; i < p; ++i){
+      if(pivot[i] != i + 1L){
+        pivoted = true;
+        break;
+      }
+    }
+
+    return out;
+  }
+
+
+// [[Rcpp::export]]
+Rcpp::List dqrls_wrap_test(const arma::mat &x, arma::vec &y, double tol){
+  auto res = dqrls_wrap(x, y, tol);
+  return Rcpp::List::create(
+    Rcpp::Named("qr") = Rcpp::wrap(res.qr),
+    Rcpp::Named("coefficients") = Rcpp::wrap(res.coefficients),
+    Rcpp::Named("rank") = res.rank,
+    Rcpp::Named("pivot") = Rcpp::wrap(res.pivot),
+    Rcpp::Named("qraux") = Rcpp::wrap(res.qraux),
+    Rcpp::Named("pivoted") = res.pivoted);
+}

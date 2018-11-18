@@ -20,4 +20,16 @@ public:
   arma::uvec pivot() const;
 };
 
+struct dqrls_res {
+  arma::mat qr;
+  arma::vec coefficients;
+  int rank;
+  arma::ivec pivot;
+  arma::vec qraux;
+  bool pivoted;
+};
+
+dqrls_res
+  dqrls_wrap(const arma::mat &x, arma::vec &y, double tol);
+
 #endif

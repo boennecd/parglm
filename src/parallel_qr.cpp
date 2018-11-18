@@ -1,5 +1,5 @@
 #include "parallel_qr.h"
-#include "arma_BLAS_LAPACK.h"
+#include "LAPACK_wrappers.h"
 
 arma::mat R_F::R_rev_piv() const {
   arma::uvec piv = pivot;

@@ -1,3 +1,6 @@
+#ifndef R_BLAS_LAPACK_H
+#define R_BLAS_LAPACK_H
+
 namespace R_BLAS_LAPACK {
   // wrapper for dtrtrs
   void triangular_sys_solve(
@@ -12,4 +15,11 @@ namespace R_BLAS_LAPACK {
   void dgeqp3(const int* m, const int* n, double* a, const int* lda,
               int* jpvt, double* tau, double* work, const int* lwork,
               int* info);
+
+  void dqrls(double*, int*, int*, double*, int*,
+             double*, double*, double*,
+             double*, int*,
+             int*, double*, double*);
 }
+
+#endif

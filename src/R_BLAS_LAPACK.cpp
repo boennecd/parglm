@@ -1,6 +1,7 @@
 #include <Rcpp.h>
 #include <R_ext/BLAS.h>
 #include <R_ext/Lapack.h>
+#include <R_ext/Applic.h>
 #include "R_BLAS_LAPACK.h"
 
 namespace R_BLAS_LAPACK {
@@ -48,5 +49,15 @@ namespace R_BLAS_LAPACK {
               int* jpvt, double* tau, double* work, const int* lwork,
               int* info){
     F77_CALL(dgeqp3)(m, n, a, lda, jpvt, tau, work, lwork, info);
+  }
+
+  void dqrls(double *x, int *n, int *p, double *y, int *ny,
+             double *tol, double *b, double *rsd,
+             double *qty, int *k,
+             int *jpvt, double *qraux, double *work){
+    F77_CALL(dqrls)(x, n, p, y, ny,
+                    tol, b, rsd,
+                    qty, k,
+                    jpvt, qraux, work);
   }
 }

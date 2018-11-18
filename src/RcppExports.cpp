@@ -6,6 +6,19 @@
 
 using namespace Rcpp;
 
+// dqrls_wrap_test
+Rcpp::List dqrls_wrap_test(const arma::mat& x, arma::vec& y, double tol);
+RcppExport SEXP _parglm_dqrls_wrap_test(SEXP xSEXP, SEXP ySEXP, SEXP tolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(dqrls_wrap_test(x, y, tol));
+    return rcpp_result_gen;
+END_RCPP
+}
 // parallelglm
 Rcpp::List parallelglm(arma::mat& X, arma::vec& Ys, std::string family, arma::vec start, arma::vec& weights, arma::vec& offsets, double tol, int nthreads, int it_max, bool trace, arma::uword block_size, const bool use_start);
 RcppExport SEXP _parglm_parallelglm(SEXP XSEXP, SEXP YsSEXP, SEXP familySEXP, SEXP startSEXP, SEXP weightsSEXP, SEXP offsetsSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP it_maxSEXP, SEXP traceSEXP, SEXP block_sizeSEXP, SEXP use_startSEXP) {
@@ -30,6 +43,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_parglm_dqrls_wrap_test", (DL_FUNC) &_parglm_dqrls_wrap_test, 3},
     {"_parglm_parallelglm", (DL_FUNC) &_parglm_parallelglm, 12},
     {NULL, NULL, 0}
 };
