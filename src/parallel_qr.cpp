@@ -34,13 +34,15 @@ void qr_parallel::submit(std::unique_ptr<qr_data_generator> generator){
   futures.push_back(th_pool.submit(worker(std::move(generator))));
 }
 
-R_F qr_parallel::compute(){
-  /* gather results */
+qr_parallel::get_stacks_res_obj qr_parallel::get_stacks_res(){
+  get_stacks_res_obj out;
+
   bool is_first = true;
-  arma::mat R_stack;
-  arma::mat F_stack;
-  arma::mat dev;
-  arma::uword p = 0L, q = 0L, i = 0L;
+  arma::mat &R_stack = out.R_stack;
+  arma::mat &F_stack = out.F_stack;
+  arma::mat &dev     = out.dev;
+  arma::uword &p = out.p, q = 0L, i = 0L;
+  p = 0L;
 
   arma::uword num_blocks = futures.size();
   while(!futures.empty()){
@@ -74,9 +76,34 @@ R_F qr_parallel::compute(){
     }
   }
 
-  /* make new QR decomp and compute new F */
-  QR_factorization qr(R_stack);
-  arma::mat F = qr.qy(F_stack, true).rows(0, p - 1);
+  return out;
 
-  return { qr.R(), qr.pivot(), std::move(F), dev };
+}
+
+R_F qr_parallel::compute(){
+  auto stacked = get_stacks_res();
+
+  /* make new QR decomp and compute new F */
+  QR_factorization qr(stacked.R_stack);
+  arma::mat F = qr.qy(stacked.F_stack, true).rows(0, stacked.p - 1);
+
+  return { qr.R(), qr.pivot(), std::move(F), stacked.dev };
+}
+
+qr_dqrls_res qr_parallel::compute_dqrls(const double tol){
+  auto stacked = get_stacks_res();
+
+  arma::vec y = stacked.F_stack.col(0); /* TODO: do not use copy */
+  auto o = dqrls_wrap(stacked.R_stack, y, tol);
+
+  arma::uword di = std::min(o.qr.n_cols, o.qr.n_rows) - 1L;
+
+  arma::mat R = o.qr.submat(0L, 0L, di, di);
+  R = arma::trimatu(R);
+  arma::uvec pivot(o.pivot.n_elem);
+  for(arma::uword i = 0; i < o.pivot.n_elem; ++i)
+    pivot[i] = o.pivot[i] - 1L;
+
+  return { R_F { R, std::move(pivot), arma::mat(),
+                 stacked.dev }, o.coefficients };
 }

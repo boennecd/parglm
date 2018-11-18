@@ -178,11 +178,39 @@ class parallelglm_class_QR {
     return dev;
   }
 
+  static void submit_tasks(data_holder_base &data, qr_parallel &pool){
+    // setup generators
+    uword n = data.X.n_rows, i_start = 0, i_end = 0.;
+    for(; i_start < n; i_start = i_end + 1L){
+      i_end = std::min(n - 1, i_start + data.block_size - 1);
+      if(i_start == 0L)
+        /* add extra from the residual chunk */
+        i_end += n % data.block_size;
+      pool.submit(
+        std::unique_ptr<qr_data_generator>(
+          new glm_qr_data_generator(i_start, i_end, data)));
+    }
+  }
+
+  static R_F get_R_f(data_holder_base &data, qr_parallel &pool){
+    submit_tasks(data, pool);
+
+    return pool.compute();
+  }
+
+  static qr_dqrls_res get_dqrls_res(data_holder_base &data, qr_parallel &pool,
+                                 const double tol)
+    {
+      submit_tasks(data, pool);
+
+      return pool.compute_dqrls(tol);
+    }
+
 public:
   static parallelglm_res compute(
       arma::mat &X, arma::vec &start, arma::vec &Ys,arma::vec &weights,
       arma::vec &offsets, const glm_base &family, double tol,
-      int nthreads, arma::uword it_max, bool trace,
+      int nthreads, arma::uword it_max, bool trace, std::string method,
       arma::uword block_size = 10000, const bool use_start = false){
     uword p = X.n_cols;
     uword n = X.n_rows;
@@ -211,14 +239,24 @@ public:
       if(i == 0)
         dev = set_eta_n_mu(data, true, pool, use_start);
 
-      R_f_out.reset(new R_F(get_R_f(data, pool)));
-      /* TODO: can maybe done smarter using that R is triangular befor
-       *       permutation */
-      arma::mat R = R_f_out->R_rev_piv();
-      beta = arma::solve(R.t(), R.t() * R_f_out->F.col(0),
-                         arma::solve_opts::no_approx);
-      beta = arma::solve(R    , beta,
-                         arma::solve_opts::no_approx);
+      if(method == "LAPACK"){
+        R_f_out.reset(new R_F(get_R_f(data, pool)));
+
+        /* TODO: can maybe done smarter using that R is triangular befor
+         *       permutation */
+        arma::mat R = R_f_out->R_rev_piv();
+        beta = arma::solve(R.t(), R.t() * R_f_out->F.col(0),
+                           arma::solve_opts::no_approx);
+        beta = arma::solve(R    , beta,
+                           arma::solve_opts::no_approx);
+
+      } else if(method == "LINPACK"){
+        auto o = get_dqrls_res(data, pool, MIN(1e-07, tol / 1000));
+        R_f_out.reset(new R_F(std::move(o.R_F)));
+        beta = o.coefficients;
+
+      } else
+        Rcpp::stop("method '" + method + "' not implemented");
 
       if(trace){
         Rcpp::Rcout << "it " << i << "\n"
@@ -239,30 +277,14 @@ public:
 
     return { beta, *R_f_out.get(), dev, (arma::uword)MIN(i + 1L, it_max), i < it_max };
   }
-
-  static R_F get_R_f(data_holder_base &data, qr_parallel &pool){
-    // setup generators
-    uword n = data.X.n_rows, i_start = 0, i_end = 0.;
-    for(; i_start < n; i_start = i_end + 1L){
-      i_end = std::min(n - 1, i_start + data.block_size - 1);
-      if(i_start == 0L)
-        /* add extra from the residual chunk */
-        i_end += n % data.block_size;
-      pool.submit(
-        std::unique_ptr<qr_data_generator>(
-         new glm_qr_data_generator(i_start, i_end, data)));
-    }
-
-    return pool.compute();
-  }
 };
 
 // [[Rcpp::export]]
 Rcpp::List parallelglm(
     arma::mat &X, arma::vec &Ys, std::string family, arma::vec start,
     arma::vec &weights, arma::vec &offsets, double tol,
-    int nthreads, int it_max, bool trace,  arma::uword block_size,
-    const bool use_start){
+    int nthreads, int it_max, bool trace, std::string method,
+    arma::uword block_size, const bool use_start){
 #ifdef PARGLM_PROF
   std::stringstream ss;
   auto t = std::time(nullptr);
@@ -276,7 +298,7 @@ Rcpp::List parallelglm(
   std::unique_ptr<glm_base> fam = get_fam_obj(family);
   auto result = parallelglm_class_QR::compute(
     X, start, Ys, weights, offsets, *fam, tol, nthreads, it_max,
-    trace, block_size, use_start);
+    trace, method, block_size, use_start);
 
 #ifdef PARGLM_PROF
   ProfilerStop();

@@ -20,8 +20,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // parallelglm
-Rcpp::List parallelglm(arma::mat& X, arma::vec& Ys, std::string family, arma::vec start, arma::vec& weights, arma::vec& offsets, double tol, int nthreads, int it_max, bool trace, arma::uword block_size, const bool use_start);
-RcppExport SEXP _parglm_parallelglm(SEXP XSEXP, SEXP YsSEXP, SEXP familySEXP, SEXP startSEXP, SEXP weightsSEXP, SEXP offsetsSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP it_maxSEXP, SEXP traceSEXP, SEXP block_sizeSEXP, SEXP use_startSEXP) {
+Rcpp::List parallelglm(arma::mat& X, arma::vec& Ys, std::string family, arma::vec start, arma::vec& weights, arma::vec& offsets, double tol, int nthreads, int it_max, bool trace, std::string method, arma::uword block_size, const bool use_start);
+RcppExport SEXP _parglm_parallelglm(SEXP XSEXP, SEXP YsSEXP, SEXP familySEXP, SEXP startSEXP, SEXP weightsSEXP, SEXP offsetsSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP it_maxSEXP, SEXP traceSEXP, SEXP methodSEXP, SEXP block_sizeSEXP, SEXP use_startSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -35,16 +35,17 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     Rcpp::traits::input_parameter< int >::type it_max(it_maxSEXP);
     Rcpp::traits::input_parameter< bool >::type trace(traceSEXP);
+    Rcpp::traits::input_parameter< std::string >::type method(methodSEXP);
     Rcpp::traits::input_parameter< arma::uword >::type block_size(block_sizeSEXP);
     Rcpp::traits::input_parameter< const bool >::type use_start(use_startSEXP);
-    rcpp_result_gen = Rcpp::wrap(parallelglm(X, Ys, family, start, weights, offsets, tol, nthreads, it_max, trace, block_size, use_start));
+    rcpp_result_gen = Rcpp::wrap(parallelglm(X, Ys, family, start, weights, offsets, tol, nthreads, it_max, trace, method, block_size, use_start));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
     {"_parglm_dqrls_wrap_test", (DL_FUNC) &_parglm_dqrls_wrap_test, 3},
-    {"_parglm_parallelglm", (DL_FUNC) &_parglm_parallelglm, 12},
+    {"_parglm_parallelglm", (DL_FUNC) &_parglm_parallelglm, 13},
     {NULL, NULL, 0}
 };
 

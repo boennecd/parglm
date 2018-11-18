@@ -97,6 +97,7 @@ test_that("works with different families", {
   n <- 1000L
   p <- 5L
   set.seed(77311413)
+  for(method in c("LAPACK", "LINPACK"))
   for(fa in list(
     binomial("logit"), binomial("probit"), binomial("cauchit"),
     binomial("cloglog"),
@@ -113,37 +114,37 @@ test_that("works with different families", {
 
     #####
     # no weights, no offset
-    lab <- paste0(fa$family, "_", fa$link)
+    lab <- paste0(fa$family, "_", fa$link, "_", method)
     frm <- y ~ X1 + X2 + X3 + X4 + X5
     suppressWarnings({
       f2 <- glm(frm, family = fa, data = df)
       f1 <- parglm(frm, family = fa, data = df,
-                   control = parglm.control(nthreads = 2))
+                   control = parglm.control(nthreads = 2, method = method))
     })
 
     eval(test_expr)
 
     #####
     # no weights, offset
-    lab <- paste0(fa$family, "_", fa$link, " w/ offset")
+    lab <- paste0(fa$family, "_", fa$link, "_", method, " w/ offset")
     frm_off <- update(frm, . ~ . - X1)
     suppressWarnings({
       f2 <- glm(frm_off, family = fa, offset = X1, data = df)
       f1 <- parglm(frm_off, family = fa, offset = X1, data = df,
-                   control = parglm.control(nthreads = 2))
+                   control = parglm.control(nthreads = 2, method = method))
     })
 
     eval(test_expr)
 
     #####
     # weights, no offset
-    lab <- paste0(fa$family, "_", fa$link, " w/ weigths")
+    lab <- paste0(fa$family, "_", fa$link, "_", method, " w/ weigths")
     w <- runif(n)
     df$w <- n * w / sum(w)
     suppressWarnings({
       f2 <- glm(frm, family = fa, weights = w, data = df)
       f1 <- parglm(frm, family = fa, weights = w, data = df,
-                   control = parglm.control(nthreads = 2))
+                   control = parglm.control(nthreads = 2, method = method))
     })
 
     eval(test_expr)
@@ -156,6 +157,7 @@ test_that("works with different families w/ starting values", {
   n <- 1000L
   p <- 5L
   set.seed(77311413)
+  for(method in c("LAPACK", "LINPACK"))
   for(fa in list(
     binomial("logit"), binomial("probit"), binomial("cauchit"),
     binomial("cloglog"), binomial("log"),
@@ -175,42 +177,58 @@ test_that("works with different families w/ starting values", {
 
     #####
     # no weights, no offset
-    lab <- paste0(fa$family, "_", fa$link)
+    lab <- paste0(fa$family, "_", fa$link, "_", method)
     sta <- rep(1, p + 1L)
     frm <- y ~ X1 + X2 + X3 + X4 + X5
     suppressWarnings({
       f2 <- glm(frm, family = fa, start = sta, data = df)
       f1 <- parglm(frm, family = fa, data = df,
-                   control = parglm.control(nthreads = 2), start = sta)
+                   control = parglm.control(nthreads = 2, method = method),
+                   start = sta)
     })
 
     eval(test_expr)
 
     #####
     # no weights, offset
-    lab <- paste0(fa$family, "_", fa$link, " w/ offset")
+    lab <- paste0(fa$family, "_", fa$link, "_", method, " w/ offset")
     sta <- rep(1, p)
     frm_off <- update(frm, . ~ . - X1)
     suppressWarnings({
       f2 <- glm(frm_off, family = fa, offset = X1, start = sta, data = df)
       f1 <- parglm(frm_off, family = fa, offset = X1, data = df,
-                   control = parglm.control(nthreads = 2), start = sta)
+                   control = parglm.control(nthreads = 2, method = method),
+                   start = sta)
     })
 
     eval(test_expr)
 
     #####
     # weights, no offset
-    lab <- paste0(fa$family, "_", fa$link, " w/ weigths")
+    lab <- paste0(fa$family, "_", fa$link, "_", method, " w/ weigths")
     w <- runif(n)
     df$w <- n * w / sum(w)
     sta <- rep(1, p + 1L)
     suppressWarnings({
       f2 <- glm(frm, family = fa, weights = w, start = sta, data = df)
       f1 <- parglm(frm, family = fa, weights = w, start = sta, data = df,
-                   control = parglm.control(nthreads = 2))
+                   control = parglm.control(nthreads = 2, method = method))
     })
 
     eval(test_expr)
   }
+})
+
+test_that("'method' equal to 'LINPACK' behaves as 'glm'", {
+  set.seed(73640893)
+  n <- 1000
+  p <- 5
+  X <- matrix(nrow = n, ncol = p)
+  for(i in 1:p)
+    X[, i] <- rnorm(n, sd = sqrt(p - i + 1L))
+  y <- rnorm(n) + rowSums(X)
+  X <- cbind(X[, 1:3], X[, 3:p])
+
+  f1 <- glm(y ~ X)
+  f2 <- parglm(y ~ X, control = parglm.control(method = "LINPACK"))
 })

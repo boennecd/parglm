@@ -31,6 +31,11 @@ struct R_F {
   arma::mat R_rev_piv() const;
 };
 
+struct qr_dqrls_res {
+  R_F R_F;
+  const arma::vec coefficients;
+};
+
 class qr_parallel {
   using ptr_vec = std::vector<std::unique_ptr<qr_data_generator> >;
 
@@ -46,6 +51,15 @@ class qr_parallel {
   unsigned int n_threads;
   std::list<std::future<R_F> > futures;
 
+  struct get_stacks_res_obj {
+    arma::uword p;
+    arma::mat R_stack;
+    arma::mat F_stack;
+    arma::mat dev;
+  };
+
+  get_stacks_res_obj get_stacks_res();
+
 public:
   thread_pool th_pool;
 
@@ -54,6 +68,8 @@ public:
   void submit(std::unique_ptr<qr_data_generator>);
 
   R_F compute();
+
+  qr_dqrls_res compute_dqrls(const double);
 };
 
 #endif // QR_PARALLEL
