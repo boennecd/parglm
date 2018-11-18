@@ -33,7 +33,8 @@ struct R_F {
 
 struct qr_dqrls_res {
   R_F R_F;
-  const arma::vec coefficients;
+  arma::vec coefficients;
+  arma::uword rank;
 };
 
 class qr_parallel {

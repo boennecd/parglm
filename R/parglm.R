@@ -170,7 +170,8 @@ parglm.fit <- function(
   # compute objects as in `glm.fit`
   coef <- drop(fit$coefficients)
   names(coef) <- xnames
-  eta <- drop(x %*% coef) + offset
+  coef_dot <- ifelse(is.na(coef), 0, coef)
+  eta <- drop(x %*% coef_dot) + offset
   good <- weights > 0
   mu <- family$linkinv(eta)
   mu.eta.val <- family$mu.eta(eta)
@@ -197,10 +198,11 @@ parglm.fit <- function(
 
   # do as in `Matrix::rankMatrix`
   rtol <- max(dim(x)) * .Machine$double.eps
-  rdiag <- abs(diag(fit$R))
-  fit$rank <- rank <- sum(rdiag > rtol * max(ncol(x)) * .Machine$double.eps)
+  fit$rank <- rank <- fit$rank
 
-  if(fit$rank < ncol(x))
+  rdiag <- abs(diag(fit$R))
+  if(control$method != "LINPACK" &&
+     any(rdiag > rtol * max(ncol(x)) * .Machine$double.eps))
     warning("Non-full rank problem. Output may not be reliable.")
 
   #####

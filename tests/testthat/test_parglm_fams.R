@@ -231,4 +231,18 @@ test_that("'method' equal to 'LINPACK' behaves as 'glm'", {
 
   f1 <- glm(y ~ X)
   f2 <- parglm(y ~ X, control = parglm.control(method = "LINPACK"))
+
+  expect_equal(f1[to_check], f2[to_check])
+
+  s1 <- summary(f1)
+  s2 <- summary(f2)
+
+
+  excl <- c("call", "coefficients", "cov.unscaled", "cov.scaled",
+            "dispersion")
+  expect_equal(s1[!names(s1) %in% excl], s2[!names(s2) %in% excl])
+  expect_equal(s1$coefficients, s2$coefficients)
+
+  # may also differ as the weights are not computed at the final estimates
+  expect_equal(s1$dispersion, s2$dispersion)
 })

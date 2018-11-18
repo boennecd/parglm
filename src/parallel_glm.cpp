@@ -48,6 +48,7 @@ struct parallelglm_res {
   const double dev;
   const arma::uword n_iter;
   const bool conv;
+  const arma::uword rank;
 };
 
 /* Class to fit glm using QR updated in chunks */
@@ -134,8 +135,15 @@ class parallelglm_class_QR {
         for(uword i = 0; i < n; ++i, ++eta_i, ++wt, ++y_i)
           *eta_i = data.family.initialize(*y_i, *wt);
 
-      } else
-        eta = data.X.rows(i_start, i_end) * *data.beta + offset;
+      } else {
+        /* change `NA`s to zero */
+        arma::vec coef = *data.beta;
+        for(auto c = coef.begin(); c != coef.end(); ++c)
+          if(ISNA(*c))
+            *c = 0.;
+
+        eta = data.X.rows(i_start, i_end) * coef + offset;
+      }
 
       double *e = eta.begin();
       for(auto m = mu.begin(); m != mu.end(); ++m, ++e)
@@ -228,7 +236,7 @@ public:
 
     arma::vec beta = start;
     data.beta = &beta;
-    arma::uword i;
+    arma::uword i, rank = 0L;
     double dev = 0.;
     std::unique_ptr<R_F> R_f_out;
     qr_parallel pool(std::vector<std::unique_ptr<qr_data_generator>>(),
@@ -249,11 +257,14 @@ public:
                            arma::solve_opts::no_approx);
         beta = arma::solve(R    , beta,
                            arma::solve_opts::no_approx);
+        rank = beta.n_elem;
 
       } else if(method == "LINPACK"){
         auto o = get_dqrls_res(data, pool, MIN(1e-07, tol / 1000));
         R_f_out.reset(new R_F(std::move(o.R_F)));
-        beta = o.coefficients;
+        for(arma::uword i = 0; i < o.R_F.pivot.n_elem; ++i)
+          beta[o.R_F.pivot[i]] = o.coefficients[i];
+        rank = o.rank;
 
       } else
         Rcpp::stop("method '" + method + "' not implemented");
@@ -275,7 +286,8 @@ public:
         break;
     }
 
-    return { beta, *R_f_out.get(), dev, (arma::uword)MIN(i + 1L, it_max), i < it_max };
+    return { beta, *R_f_out.get(), dev, (arma::uword)MIN(i + 1L, it_max),
+             i < it_max, rank };
   }
 };
 
@@ -313,5 +325,6 @@ Rcpp::List parallelglm(
     Rcpp::Named("dev")    = result.dev,
 
     Rcpp::Named("n_iter") = result.n_iter,
-    Rcpp::Named("conv")   = result.conv);
+    Rcpp::Named("conv")   = result.conv,
+    Rcpp::Named("rank")   = result.rank);
 }
