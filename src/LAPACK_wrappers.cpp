@@ -96,6 +96,8 @@ dqrls_res
     int &rank = out.rank;
     arma::mat &qr = out.qr;
     arma::ivec &pivot = out.pivot;
+    for(int i = 0; i < p; ++i)
+      pivot[i] = i + 1L;
     arma::vec &qraux = out.qraux, &coefficients = out.coefficients,
       work(2L * p), residuals = y, effects = y;
 
@@ -111,6 +113,9 @@ dqrls_res
         break;
       }
     }
+
+    for(int i = rank; i < p; ++i)
+      coefficients[i] = NA_REAL;
 
     return out;
   }
