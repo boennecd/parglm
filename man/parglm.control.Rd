@@ -5,7 +5,7 @@
 \title{Auxiliary for Controlling GLM Fitting in Parallel}
 \usage{
 parglm.control(epsilon = 1e-08, maxit = 25, trace = FALSE,
-  nthreads = 1L, block_size = NULL)
+  nthreads = 1L, block_size = NULL, method = "LINPACK")
 }
 \arguments{
 \item{epsilon}{positive convergence tolerance.}
@@ -18,12 +18,21 @@ parglm.control(epsilon = 1e-08, maxit = 25, trace = FALSE,
 using your number of physical cores if your data set is sufficiently large.}
 
 \item{block_size}{number of observation to include in each parallel block.}
+
+\item{method}{string specifying which method to use. Either \code{"LINPACK"} or
+\code{"LAPACK"}.}
 }
 \value{
 A list with components named as the arguments.
 }
 \description{
 Auxiliary function for \code{\link{parglm}} fitting.
+}
+\details{
+The \code{LINPACK} method uses the same QR method as \code{\link{glm.fit}} for the final QR decomposition.
+This is the \code{dqrdc2} method described in \code{\link[base]{qr}}. All other QR
+decompositions but the last are made with \code{DGEQP3} from \code{LAPACK}.
+See Wood, Goude, and Shaw (2015) for details on the QR method.
 }
 \examples{
 # use one core
@@ -39,4 +48,9 @@ f2 <- parglm(lot1 ~ log(u), data = clotting, family = Gamma,
              control = parglm.control(nthreads = 2L))
 all.equal(coef(f1), coef(f2))
 
+}
+\references{
+Wood, S.N., Goude, Y. & Shaw S. (2015) Generalized additive models for
+large datasets. Journal of the Royal Statistical Society, Series C
+64(1): 139-155.
 }

@@ -81,6 +81,19 @@ parglm <- function(
 #' @param nthreads number of cores to use. You may get the best performance by
 #' using your number of physical cores if your data set is sufficiently large.
 #' @param block_size number of observation to include in each parallel block.
+#' @param method string specifying which method to use. Either \code{"LINPACK"} or
+#' \code{"LAPACK"}.
+#'
+#' @details
+#' The \code{LINPACK} method uses the same QR method as \code{\link{glm.fit}} for the final QR decomposition.
+#' This is the \code{dqrdc2} method described in \code{\link[base]{qr}}. All other QR
+#' decompositions but the last are made with \code{DGEQP3} from \code{LAPACK}.
+#' See Wood, Goude, and Shaw (2015) for details on the QR method.
+#'
+#' @references
+#' Wood, S.N., Goude, Y. & Shaw S. (2015) Generalized additive models for
+#' large datasets. Journal of the Royal Statistical Society, Series C
+#' 64(1): 139-155.
 #'
 #' @return
 #' A list with components named as the arguments.
@@ -102,7 +115,7 @@ parglm <- function(
 #' @export
 parglm.control <- function(
   epsilon = 1e-08, maxit = 25, trace = FALSE, nthreads = 1L,
-  block_size = NULL, method = "LAPACK")
+  block_size = NULL, method = "LINPACK")
 {
   if (!is.numeric(epsilon) || epsilon <= 0)
     stop("value of 'epsilon' must be > 0")

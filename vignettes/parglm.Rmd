@@ -101,9 +101,7 @@ matrix. This is advantages in terms of computation cost but may lead to unstable
 solutions. You can alter the number of observations in each parallel chunk 
 with the `block_size` argument of `parglm.control`.
 
-`parglm` does not at the moment handle close to singular problems 
-as "neatly" as `glm` where `glm` forces some elements to be excluded. The 
-single threaded performance of `parglm` may be slower when there are more coefficients. 
+The single threaded performance of `parglm` may be slower when there are more coefficients. 
 The cause seems to be the difference between the LAPACK and LINPACK implementation. 
 This presumably due to either the QR decomposition method and/or the `qr.qty` method. 
 On Windows, the `parglm` do seems slower when build with `Rtools` and the reason 
