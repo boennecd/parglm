@@ -105,5 +105,5 @@ qr_dqrls_res qr_parallel::compute_dqrls(const double tol){
     pivot[i] = o.pivot[i] - 1L;
 
   return { R_F { R, std::move(pivot), arma::mat(),
-                 stacked.dev }, o.coefficients, o.rank };
+                 stacked.dev }, o.coefficients, (arma::uword)o.rank };
 }

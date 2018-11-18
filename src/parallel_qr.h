@@ -32,7 +32,7 @@ struct R_F {
 };
 
 struct qr_dqrls_res {
-  R_F R_F;
+  ::R_F R_F;
   arma::vec coefficients;
   arma::uword rank;
 };
