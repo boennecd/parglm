@@ -1,4 +1,3 @@
-#include "arma_n_rcpp.h"
 #include "family.h"
 #include <float.h>
 #include <limits>

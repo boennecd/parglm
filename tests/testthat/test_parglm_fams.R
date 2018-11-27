@@ -246,3 +246,25 @@ test_that("'method' equal to 'LINPACK' behaves as 'glm'", {
   # may also differ as the weights are not computed at the final estimates
   expect_equal(s1$dispersion, s2$dispersion)
 })
+
+test_that("'parglm' yields the same as 'glm' also when one observations is not 'good'",{
+  phat <- seq(.01, .99, by = .01)
+  X <- log(phat / (1 - phat)) - 2
+  set.seed(47313714)
+  Y <- phat > runif(length(phat))
+
+  W <- rep(1, length(Y))
+  W[1] <- 0
+  fit <- suppressWarnings(glm(Y ~ X, binomial(), weights = W))
+  pfit <- parglm(Y ~ X, binomial(), weights = W,
+                 control = parglm.control(nthreads = 2))
+  expect_equal(fit[to_check], pfit[to_check])
+
+  Y <- rev(Y)
+  X <- rev(X)
+  W <- rev(W)
+  fit <- suppressWarnings(glm(Y ~ X, binomial(), weights = W))
+  pfit <- parglm(Y ~ X, binomial(), weights = W,
+                 control = parglm.control(nthreads = 2))
+  expect_equal(fit[to_check], pfit[to_check])
+})

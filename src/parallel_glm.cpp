@@ -75,30 +75,38 @@ class parallelglm_class_QR {
       arma::vec offset(data.offsets.begin() + i_start           , n, false);
       arma::vec eta   (data.eta.begin()     + i_start           , n, false);
       arma::vec mu    (data.mu.begin()      + i_start           , n, false);
-      arma::mat X = data.X.rows(i_start, i_end);
 
       /* compute values for QR computation */
-      arma::vec mu_eta_val(eta.n_elem);
-      double *e = eta.begin(), *mev = mu_eta_val.begin();
-      for(uword i = 0; i < eta.n_elem; ++i, ++e, ++mev)
-        *mev = data.family.mu_eta(*e);
+      arma::vec mu_eta_val = data.family.mu_eta(eta);
 
       arma::uvec good = arma::find((weight > 0) % (mu_eta_val != 0.));
+      const bool is_all_good = good.n_elem == i_end - i_start + 1L;
 
-      mu = mu(good);
-      eta = eta(good);
-      mu_eta_val = mu_eta_val(good);
-      arma::vec var(mu.n_elem);
-      double *m = mu.begin();
-      for(auto v = var.begin(); v != var.end(); ++v, ++m)
-        *v = data.family.variance(*m);
+      arma::vec z, w;
+      if(is_all_good){
+        arma::vec var = data.family.variance(mu);
 
-      /* compute X and working responses and return */
-      arma::vec z = (eta - offset(good)) + (y(good) - mu) / mu_eta_val;
-      arma::vec w = arma::sqrt(
-        (weight(good) % arma::square(mu_eta_val)) / var);
+        z = (eta - offset) + (y - mu) / mu_eta_val;
+        w = arma::sqrt(weight % arma::square(mu_eta_val) / var);
 
-      X = X.rows(good);
+      } else {
+        mu = mu(good);
+        eta = eta(good);
+        mu_eta_val = mu_eta_val(good);
+        arma::vec var = data.family.variance(mu);
+
+        z = (eta - offset(good)) + (y(good) - mu) / mu_eta_val;
+        w = arma::sqrt((weight(good) % arma::square(mu_eta_val)) / var);
+      }
+
+      arma::mat X;
+      if(is_all_good)
+        X = data.X.rows(i_start, i_end);
+      else {
+        good += i_start;
+        X = data.X.rows(good);
+      }
+
       X.each_col() %= w;
       z %= w;
 
@@ -128,14 +136,9 @@ class parallelglm_class_QR {
       arma::vec weight(data.weights.begin() + i_start          , n, false);
       arma::vec offset(data.offsets.begin() + i_start          , n, false);
 
-      if(first_it){
-        double *eta_i = eta.begin();
-        const double *y_i = y.begin();
-        const double *wt = weight.begin();
-        for(uword i = 0; i < n; ++i, ++eta_i, ++wt, ++y_i)
-          *eta_i = data.family.initialize(*y_i, *wt);
-
-      } else {
+      if(first_it)
+        data.family.initialize(eta, y, weight);
+      else {
         /* change `NA`s to zero */
         arma::vec coef = *data.beta;
         for(auto c = coef.begin(); c != coef.end(); ++c)
@@ -145,19 +148,9 @@ class parallelglm_class_QR {
         eta = data.X.rows(i_start, i_end) * coef + offset;
       }
 
-      double *e = eta.begin();
-      for(auto m = mu.begin(); m != mu.end(); ++m, ++e)
-        *m = data.family.linkinv(*e);
+      data.family.linkinv(mu, eta);
 
-
-      double dev = 0;
-      const double *mu_i = mu.begin();
-      const double *wt_i = weight.begin();
-      const double  *y_i = y.begin();
-      for(uword i = 0; i < n; ++i, ++mu_i, ++wt_i, ++y_i)
-        dev += data.family.dev_resids(*y_i, *mu_i, *wt_i);
-
-      return dev;
+      return data.family.dev_resids(y, mu, weight);
     }
   };
 

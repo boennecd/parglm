@@ -93,7 +93,7 @@ R_F qr_parallel::compute(){
 qr_dqrls_res qr_parallel::compute_dqrls(const double tol){
   auto stacked = get_stacks_res();
 
-  arma::vec y = stacked.F_stack.col(0); /* TODO: do not use copy */
+  arma::vec y(stacked.F_stack.memptr(), stacked.F_stack.n_elem, false);
   auto o = dqrls_wrap(stacked.R_stack, y, tol);
 
   arma::uword di = std::min(o.qr.n_cols, o.qr.n_rows) - 1L;

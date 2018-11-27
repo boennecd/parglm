@@ -15,7 +15,9 @@ parglm.control(epsilon = 1e-08, maxit = 25, trace = FALSE,
 \item{trace}{logical indicating if output should be produced doing estimation.}
 
 \item{nthreads}{number of cores to use. You may get the best performance by
-using your number of physical cores if your data set is sufficiently large.}
+using your number of physical cores if your data set is sufficiently large.
+Using the number of physical CPUs/cores may yield the best performance (
+check this e.g., by calling \code{parallel::detectCores(logical = FALSE)}).}
 
 \item{block_size}{number of observation to include in each parallel block.}
 

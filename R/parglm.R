@@ -80,6 +80,8 @@ parglm <- function(
 #' @param trace logical indicating if output should be produced doing estimation.
 #' @param nthreads number of cores to use. You may get the best performance by
 #' using your number of physical cores if your data set is sufficiently large.
+#' Using the number of physical CPUs/cores may yield the best performance
+#' (check your number e.g., by calling \code{parallel::detectCores(logical = FALSE)}).
 #' @param block_size number of observation to include in each parallel block.
 #' @param method string specifying which method to use. Either \code{"LINPACK"} or
 #' \code{"LAPACK"}.
