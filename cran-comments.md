@@ -15,3 +15,11 @@
 ## R CMD check results
 There were no ERRORs, or WARNINGs. There is a NOTE on `fedora-gcc-devel` and
 `debian-gcc-release` on rhub about the size of the package.
+
+## Resubmission
+I have added two author's as copyright holders.
+
+The Boost Software License should be GPL-compatible according to 
+https://www.gnu.org/licenses/license-list.en.html. 
+
+There are not references about the method which I can add to the Description.

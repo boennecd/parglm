@@ -2,9 +2,14 @@ Package: parglm
 Type: Package
 Title: Parallel GLM
 Version: 0.1.0
-Authors@R: person("Benjamin", "Christoffersen", 
-                  email = "boennecd@gmail.com", 
-                  role = c("cre", "aut"))
+Authors@R: c(
+  person("Benjamin", "Christoffersen", 
+         email = "boennecd@gmail.com", 
+         role = c("cre", "aut")), 
+  person("Anthony", "Williams", 
+         role = c("cph")),
+  person("Boost developers", 
+         role = c("cph")))
 Description: Provides a parallel estimation method for generalized 
   linear models without compiling with a multithreaded LAPACK or BLAS.
 License:  GPL-2
