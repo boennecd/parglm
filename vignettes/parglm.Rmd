@@ -53,7 +53,7 @@ cl <- list(
   quote(microbenchmark), 
   glm      = quote(glm     (y ~ ., binomial(), df)), 
   speedglm = quote(speedglm(y ~ ., family = binomial(), data = df)), 
-  times = 5L)
+  times = 11L)
 cl <- c(
   cl, lapply(1:n_threads, function(i) bquote(parglm(
       y ~ ., binomial(), df, control = parglm.control(nthreads = .(i))))))
@@ -117,7 +117,7 @@ microbenchmark::microbenchmark(
   `qr LAPACK`      = qr(X, LAPACK = TRUE), 
   `qr.qty LINPACK` = qr.qty(qr1, df$y), 
   `qr.qty LAPACK`  = qr.qty(qr2, df$y), 
-  times = 5)
+  times = 11)
 ```
 
 ## Session info
