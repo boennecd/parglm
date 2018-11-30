@@ -11,9 +11,16 @@ class QR_factorization {
   int rank;
   std::unique_ptr<double []> qraux;
   std::unique_ptr<int []> pivot_;
+  arma::mat Amat;
+
+  double* get_qr_ptr();
+  const double* get_qr_ptr() const;
+  void init();
 
 public:
+  QR_factorization(arma::mat&&);
   QR_factorization(const arma::mat&);
+
   arma::mat qy(const arma::mat&, const bool transpose = false) const;
   arma::vec qy(const arma::vec&, const bool transpose = false) const;
   arma::mat R() const;

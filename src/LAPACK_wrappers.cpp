@@ -11,12 +11,36 @@ if(info_sym < 0){                                                               
   Rcpp::stop(ss.str());                                                                      \
 }
 
+QR_factorization::QR_factorization(arma::mat &&A):
+  M(A.n_rows), N(A.n_cols), qraux(new double[MIN(M, N)]),
+  pivot_(new int[N]), Amat(A) {
+  init();
+}
+
 QR_factorization::QR_factorization(const arma::mat &A):
   M(A.n_rows), N(A.n_cols), qr(new double[M * N]),
   qraux(new double[MIN(M, N)]), pivot_(new int[N]){
   // copy A
   std::memcpy(qr.get(), A.memptr(), M * N * sizeof(double));
 
+  init();
+}
+
+double* QR_factorization::get_qr_ptr() {
+  if(!qr)
+    return Amat.memptr();
+
+  return &qr[0];
+}
+
+const double* QR_factorization::get_qr_ptr() const {
+  if(!qr)
+    return Amat.memptr();
+
+  return &qr[0];
+}
+
+void QR_factorization::init(){
   /* initalize */
   for(int i = 0; i < N; ++i)
     pivot_[i] = 0;
@@ -25,16 +49,16 @@ QR_factorization::QR_factorization(const arma::mat &A):
   int info, lwork = -1;
   double tmp;
   R_BLAS_LAPACK::dgeqp3(
-    &M, &N, &qr[0], &M, &pivot_[0], &qraux[0], &tmp, &lwork, &info);
+    &M, &N, get_qr_ptr(), &M, &pivot_[0], &qraux[0], &tmp, &lwork, &info);
   LAPACK_CHECK_ILLEGAL(info, dgeqp3)
 
-  lwork = (int) tmp;
+    lwork = (int) tmp;
   std::unique_ptr<double []> dwo(new double[lwork]);
   R_BLAS_LAPACK::dgeqp3(
-    &M, &N, &qr[0], &M, &pivot_[0], &qraux[0], &dwo[0], &lwork, &info);
+    &M, &N, get_qr_ptr(), &M, &pivot_[0], &qraux[0], &dwo[0], &lwork, &info);
   LAPACK_CHECK_ILLEGAL(info, dgeqp3)
 
-  rank = MIN(M, N);
+    rank = MIN(M, N);
 }
 
 arma::mat QR_factorization::qy(
@@ -49,14 +73,14 @@ arma::mat QR_factorization::qy(
   int info, lwork = -1;
   double tmp;
   R_BLAS_LAPACK::dormqr(
-    "L", transpose ? "T" : "N", &M, &NRHS, &K, &qr[0], &M, &qraux[0],
+    "L", transpose ? "T" : "N", &M, &NRHS, &K, get_qr_ptr(), &M, &qraux[0],
     out.memptr(), &M, &tmp, &lwork, &info);
   LAPACK_CHECK_ILLEGAL(info, dormqr)
 
   lwork = (int) tmp;
   std::unique_ptr<double []> work(new double[lwork]);
   R_BLAS_LAPACK::dormqr(
-    "L", transpose ? "T" : "N", &M, &NRHS, &K, &qr[0], &M, &qraux[0],
+    "L", transpose ? "T" : "N", &M, &NRHS, &K, get_qr_ptr(), &M, &qraux[0],
     out.memptr(), &M, &work[0], &lwork, &info);
   LAPACK_CHECK_ILLEGAL(info, dormqr)
 
@@ -70,7 +94,7 @@ arma::vec QR_factorization::qy(
 }
 
 arma::mat QR_factorization::R() const {
-  arma::mat out(&qr[0], M, N);
+  arma::mat out(get_qr_ptr(), M, N);
   out = out.rows(0, MIN(M, N) - 1);
 
   return arma::trimatu(out);

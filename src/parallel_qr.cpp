@@ -13,7 +13,7 @@ qr_parallel::worker::worker
 
 R_F qr_parallel::worker::operator()(){
   qr_work_chunk my_chunk = my_generator->get_chunk();
-  QR_factorization qr(my_chunk.X);
+  QR_factorization qr(std::move(my_chunk.X));
   arma::mat F = qr.qy(my_chunk.Y, true).rows(0, my_chunk.X.n_cols - 1);
 
   return R_F { qr.R(), qr.pivot(), std::move(F), my_chunk.dev };
