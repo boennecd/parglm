@@ -18,19 +18,23 @@ The computation is done in parallel as in the `bam` function in the `mgcv` packa
 cost is an additional $O(Mp^2 + p^3)$ where $p$ is the number of 
 coefficients and $M$ is the number chunks to be computed in parallel. 
 The advantage is that you do not need to compile the package with 
-an optimized BLAS or LAPACK which supports multithreading.
+an optimized BLAS or LAPACK which supports multithreading. The package also 
+includes a method that computes the Fisher information and then solves the normal
+equation as in the `speedglm` package. This is faster but less numerically 
+stable.
 
 ## Example of computation time
 
 ```{r set_params, echo = FALSE}
 n <- 1000000L
 p <- 50L
-n_threads <- 18L
+n_threads <- 16L
 ```
 
 Below, we perform estimate a logistic regression with `r n` observations 
 and `r p` covariates. We vary the number of cores being used with the
-`nthreads` argument to `parglm.control`.
+`nthreads` argument to `parglm.control`. The `method` arguments sets the which
+method is used.
 
 ```{r sim}
 #####
@@ -54,10 +58,19 @@ cl <- list(
   glm      = quote(glm     (y ~ ., binomial(), df)), 
   speedglm = quote(speedglm(y ~ ., family = binomial(), data = df)), 
   times = 11L)
+tfunc <- function(method = "LINPACK", nthreads)
+  parglm(y ~ ., binomial(), df, control = parglm.control(method = method,
+                                                         nthreads = nthreads))
 cl <- c(
-  cl, lapply(1:n_threads, function(i) bquote(parglm(
-      y ~ ., binomial(), df, control = parglm.control(nthreads = .(i))))))
-names(cl)[5:(5L + n_threads - 1L)] <- paste0("parglm.", 1:n_threads)
+  cl, lapply(1:n_threads, function(i) bquote(tfunc(nthreads = .(i)))))
+names(cl)[5:(5L + n_threads - 1L)] <- paste0("parglm-LINPACK-", 1:n_threads)
+
+cl <- c(
+  cl, lapply(1:n_threads, function(i) bquote(tfunc(
+    nthreads = .(i), method = "FAST"))))
+names(cl)[(5L + n_threads):(5L + 2L * n_threads - 1L)] <- 
+  paste0("parglm-FAST-", 1:n_threads)
+
 cl <- as.call(cl)
 cl # the call we make
 
@@ -89,15 +102,22 @@ modmat_time # time taken by `model.matrix` and `model.frame`
 par(mar = c(4.5, 4.5, .5, .5))
 o <- aggregate(time ~ expr, out, median)[, 2] / 10^9
 ylim <- range(o, 0); ylim[2] <- ylim[2] + .04 * diff(ylim)
-plot(1:n_threads, o[-(1:2)], xlab = "Number of cores", yaxs = "i",
+
+o_linpack <- o[-c(1:2, (n_threads + 3L):length(o))]
+o_fast    <- o[-(1:(n_threads + 2L))]
+
+plot(1:n_threads, o_linpack, xlab = "Number of cores", yaxs = "i",
      ylim = ylim, ylab = "Run time", pch = 16)
+points(1:n_threads, o_fast, pch = 1)
 abline(h = o[1], lty = 2)
 abline(h = o[2], lty = 3)
 abline(h = median(modmat_time$time) / 10^9, lty = 1)
 ```
 
-It is worth mentioning that `speedglm` computes the cross product of the weighted design 
-matrix. This is advantages in terms of computation cost but may lead to unstable 
+The open circles are the `FAST` method and the other circles are the `LINPACK`
+method. Again, the `FAST` method and the `speedglm` package compute Fisher 
+information and then solves the normal equation. 
+This is advantages in terms of computation cost but may lead to unstable 
 solutions. You can alter the number of observations in each parallel chunk 
 with the `block_size` argument of `parglm.control`.
 
