@@ -177,10 +177,11 @@ parglm.fit <- function(
     if(nthreads_new < 1L)
       nthreads_new <- 1L
 
-    warning(
-      "Too few observation compared to the number of threads. ",
-      nthreads_new, " thread(s) will be used instead of ",
-      control$nthreads, ".")
+    if(control$nthreads != nthreads_new)
+      warning(
+        "Too few observation compared to the number of threads. ",
+        nthreads_new, " thread(s) will be used instead of ",
+        control$nthreads, ".")
 
     control$nthreads <- nthreads_new
   }

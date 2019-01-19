@@ -29,4 +29,6 @@ test_that("Using more threads then rows yields a warning", {
     parglm( a ~ b - 1, data = this_df , nthreads = 64),
     regexp = "Too few observation compared to the number of threads. 1 thread(s) will be used instead of 64.",
     fixed = TRUE)
+
+  expect_silent(parglm( a ~ b - 1, data = this_df , nthreads = 1))
 })

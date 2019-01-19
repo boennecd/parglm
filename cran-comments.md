@@ -16,5 +16,6 @@
   solaris-x86-patched
 
 ## R CMD check results
-There were no ERRORs, or WARNINGs. There is a NOTE on `fedora-gcc-devel` and
-`debian-gcc-release` on rhub about the size of the package.
+There were no ERRORs, or WARNINGs. There is a NOTE on `fedora-gcc-devel`
+on rhub, my local machine, and `debian-gcc-release` on rhub about the size 
+of the package.
