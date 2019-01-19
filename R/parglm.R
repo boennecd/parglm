@@ -66,7 +66,7 @@ parglm <- function(
   contrasts = NULL, model = TRUE, x = FALSE, y = TRUE, ...){
   cl <- match.call()
   cl[[1L]] <- quote(glm)
-  cl[c("method", "singular.ok")] <- list(quote(parglm.fit), FALSE)
+  cl[c("method", "singular.ok")] <- list(quote(parglm::parglm.fit), FALSE)
   eval(cl, parent.frame())
 }
 
@@ -169,6 +169,21 @@ parglm.fit <- function(
     weights <- rep.int(1, nobs)
   if (is.null(offset))
     offset <- rep.int(0, nobs)
+
+  n_min_per_thread <- 10L
+  n_per_thread <- nrow(x) / control$nthreads
+  if(n_per_thread < n_min_per_thread){
+    nthreads_new <- nrow(x) %/% n_min_per_thread
+    if(nthreads_new < 1L)
+      nthreads_new <- 1L
+
+    warning(
+      "Too few observation compared to the number of threads. ",
+      nthreads_new, " thread(s) will be used instead of ",
+      control$nthreads, ".")
+
+    control$nthreads <- nthreads_new
+  }
 
   block_size <- if(!is.null(control$block_size))
     control$block_size else
