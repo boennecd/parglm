@@ -1,25 +1,20 @@
 ## Test environments
-* local Windows 10 machine with R 3.5.0
+* Ubuntu 18.04 LTS
+  R version 3.5.1
+* Ubuntu 14.04.5 LTS (on travis-ci with codename: trusty)
+  R version 3.5.2
 * win-builder (devel and release)
-* Ubuntu 14.04 (on travis-ci), R 3.5.1
-* Ubuntu 17.10 with clang 6.0.0, devel, and ASAN/UBSAN settings
+* Local Ubuntu 18.04 with R 3.5.2 and with clang 6.0.0 with ASAN and 
+  UBSAN checks
 * The following rhub platforms:
-  debian-gcc-devel
   fedora-clang-devel
   fedora-gcc-devel
   debian-gcc-patched
+  debian-gcc-devel
   debian-gcc-release
-  solaris-x86-patched
   linux-x86_64-rocker-gcc-san
+  solaris-x86-patched
 
 ## R CMD check results
 There were no ERRORs, or WARNINGs. There is a NOTE on `fedora-gcc-devel` and
 `debian-gcc-release` on rhub about the size of the package.
-
-## Resubmission
-I have added two author's as copyright holders.
-
-The Boost Software License should be GPL-compatible according to 
-https://www.gnu.org/licenses/license-list.en.html. 
-
-There are not references about the method which I can add to the Description.

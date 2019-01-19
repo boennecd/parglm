@@ -1,7 +1,7 @@
 Package: parglm
 Type: Package
 Title: Parallel GLM
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(
   person("Benjamin", "Christoffersen", 
          email = "boennecd@gmail.com", 
