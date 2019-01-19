@@ -66,7 +66,7 @@ parglm <- function(
   contrasts = NULL, model = TRUE, x = FALSE, y = TRUE, ...){
   cl <- match.call()
   cl[[1L]] <- quote(glm)
-  cl[c("method", "singular.ok")] <- list(quote(parglm.fit), FALSE)
+  cl[c("method", "singular.ok")] <- list(quote(parglm::parglm.fit), FALSE)
   eval(cl, parent.frame())
 }
 
