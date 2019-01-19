@@ -9,9 +9,9 @@ parglm(formula, family = gaussian, data, weights, subset, na.action,
   start = NULL, offset, control = list(...), contrasts = NULL,
   model = TRUE, x = FALSE, y = TRUE, ...)
 
-parglm.fit(x, y, weights = rep(1, nobs), start = NULL, etastart = NULL,
-  mustart = NULL, offset = rep(0, nobs), family = gaussian(),
-  control = list(), intercept = TRUE, ...)
+parglm.fit(x, y, weights = rep(1, nobs), start = NULL,
+  etastart = NULL, mustart = NULL, offset = rep(0, nobs),
+  family = gaussian(), control = list(), intercept = TRUE, ...)
 }
 \arguments{
 \item{formula}{an object of class \code{\link{formula}}.}

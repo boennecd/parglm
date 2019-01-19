@@ -12,7 +12,7 @@ Authors@R: c(
          role = c("cph")))
 Description: Provides a parallel estimation method for generalized 
   linear models without compiling with a multithreaded LAPACK or BLAS.
-License:  GPL-2
+License: GPL-2
 Encoding: UTF-8
 LazyData: true
 LinkingTo: Rcpp, RcppArmadillo
@@ -25,5 +25,5 @@ Suggests: testthat,
     speedglm, 
     microbenchmark,
     R.rsp
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
 VignetteBuilder: R.rsp

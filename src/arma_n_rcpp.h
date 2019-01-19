@@ -10,7 +10,7 @@
   #define ARMA_DONT_USE_OPENMP 1
 #endif
 
-#define ARMA_NO_DEBUG
+//#define ARMA_NO_DEBUG
 // Note: This also disables the check in inv(A, B) for whether inversion is succesfull it seems http://arma.sourceforge.net/docs.html#inv
 // from armadillo config.hpp
 //// Uncomment the above line if you want to disable all run-time checks.

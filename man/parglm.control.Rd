@@ -16,13 +16,13 @@ parglm.control(epsilon = 1e-08, maxit = 25, trace = FALSE,
 
 \item{nthreads}{number of cores to use. You may get the best performance by
 using your number of physical cores if your data set is sufficiently large.
-Using the number of physical CPUs/cores may yield the best performance (
-check this e.g., by calling \code{parallel::detectCores(logical = FALSE)}).}
+Using the number of physical CPUs/cores may yield the best performance
+(check your number e.g., by calling \code{parallel::detectCores(logical = FALSE)}).}
 
 \item{block_size}{number of observation to include in each parallel block.}
 
-\item{method}{string specifying which method to use. Either \code{"LINPACK"} or
-\code{"LAPACK"}.}
+\item{method}{string specifying which method to use. Either \code{"LINPACK"},
+\code{"LAPACK"}, or \code{"FAST"}.}
 }
 \value{
 A list with components named as the arguments.
@@ -35,6 +35,9 @@ The \code{LINPACK} method uses the same QR method as \code{\link{glm.fit}} for t
 This is the \code{dqrdc2} method described in \code{\link[base]{qr}}. All other QR
 decompositions but the last are made with \code{DGEQP3} from \code{LAPACK}.
 See Wood, Goude, and Shaw (2015) for details on the QR method.
+
+The \code{FAST} method computes the Fisher information and then solves the normal
+equation. This is faster but less numerically stable.
 }
 \examples{
 # use one core

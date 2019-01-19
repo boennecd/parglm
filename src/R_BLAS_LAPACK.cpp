@@ -60,4 +60,18 @@ namespace R_BLAS_LAPACK {
                     qty, k,
                     jpvt, qraux, work);
   }
+
+  void dgemv(const char *trans, const int *m, const int *n,
+             const double *alpha, const double *a, const int *lda,
+             const double *x, const int *incx, const double *beta,
+             double *y, const int *incy){
+    F77_CALL(dgemv)(trans, m, n, alpha, a, lda, x, incx, beta, y, incy);
+  }
+
+  void dsyrk(const char *uplo, const char *trans,
+             const int *n, const int *k,
+             const double *alpha, const double *a, const int *lda,
+             const double *beta, double *c, const int *ldc){
+    F77_CALL(dsyrk)(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+  }
 }

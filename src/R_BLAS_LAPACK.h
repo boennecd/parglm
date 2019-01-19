@@ -20,6 +20,16 @@ namespace R_BLAS_LAPACK {
              double*, double*, double*,
              double*, int*,
              int*, double*, double*);
+
+  void dgemv(const char*, const int*, const int*,
+             const double*, const double*, const int*,
+             const double*, const int*, const double*,
+             double*, const int*);
+
+  void dsyrk(const char*, const char*,
+             const int*, const int*,
+             const double*, const double*, const int*,
+             const double*, double*, const int*);
 }
 
 #endif

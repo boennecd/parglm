@@ -83,14 +83,17 @@ parglm <- function(
 #' Using the number of physical CPUs/cores may yield the best performance
 #' (check your number e.g., by calling \code{parallel::detectCores(logical = FALSE)}).
 #' @param block_size number of observation to include in each parallel block.
-#' @param method string specifying which method to use. Either \code{"LINPACK"} or
-#' \code{"LAPACK"}.
+#' @param method string specifying which method to use. Either \code{"LINPACK"},
+#' \code{"LAPACK"}, or \code{"FAST"}.
 #'
 #' @details
 #' The \code{LINPACK} method uses the same QR method as \code{\link{glm.fit}} for the final QR decomposition.
 #' This is the \code{dqrdc2} method described in \code{\link[base]{qr}}. All other QR
 #' decompositions but the last are made with \code{DGEQP3} from \code{LAPACK}.
 #' See Wood, Goude, and Shaw (2015) for details on the QR method.
+#'
+#' The \code{FAST} method computes the Fisher information and then solves the normal
+#' equation. This is faster but less numerically stable.
 #'
 #' @references
 #' Wood, S.N., Goude, Y. & Shaw S. (2015) Generalized additive models for
@@ -126,7 +129,7 @@ parglm.control <- function(
   stopifnot(
     is.numeric(nthreads) && nthreads >= 1,
     is.null(block_size) || (is.numeric(block_size) && block_size >= 1),
-    method %in% c("LAPACK", "LINPACK"))
+    method %in% c("LAPACK", "LINPACK", "FAST"))
   list(epsilon = epsilon, maxit = maxit, trace = trace, nthreads = nthreads,
        block_size = block_size, method = method)
 }
@@ -214,10 +217,8 @@ parglm.fit <- function(
   # do as in `Matrix::rankMatrix`
   rtol <- max(dim(x)) * .Machine$double.eps
   fit$rank <- rank <- fit$rank
-
   rdiag <- abs(diag(fit$R))
-  if(control$method != "LINPACK" &&
-     any(rdiag > rtol * max(ncol(x)) * .Machine$double.eps))
+  if(control$method != "LINPACK" && any(rdiag <= rtol * max(rdiag)))
     warning("Non-full rank problem. Output may not be reliable.")
 
   #####

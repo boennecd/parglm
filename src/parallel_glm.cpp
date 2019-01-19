@@ -2,6 +2,7 @@
 #include "thread_pool.h"
 #include "parallel_qr.h"
 #include "family.h"
+#include "R_BLAS_LAPACK.h"
 
 /* #define PARGLM_PROF 1 */
 #ifdef PARGLM_PROF
@@ -51,24 +52,30 @@ struct parallelglm_res {
   const arma::uword rank;
 };
 
+const double double_one = 1., double_zero = 0.;
+const int int_one = 1;
+char char_N = 'N', char_U = 'U', char_T = 'T';
+
 /* Class to fit glm using QR updated in chunks */
 class parallelglm_class_QR {
   using uword = arma::uword;
 
   class glm_qr_data_generator : public qr_data_generator {
-
     const uword i_start, i_end;
     data_holder_base &data;
+    const bool do_inner;
 
   public:
     glm_qr_data_generator
-    (uword i_start, uword i_end, data_holder_base &data):
-    i_start(i_start), i_end(i_end), data(data) {}
+    (uword i_start, uword i_end, data_holder_base &data,
+     const bool do_inner = false):
+    i_start(i_start), i_end(i_end), data(data),
+    do_inner(do_inner) {}
 
     qr_work_chunk get_chunk() const override {
       /* assign objects for later use */
       arma::span my_span(i_start, i_end);
-      uword n = i_end - i_start + 1;
+      int n = i_end - i_start + 1;
 
       arma::vec y     (data.Ys.begin()      + i_start           , n, false);
       arma::vec weight(data.weights.begin() + i_start           , n, false);
@@ -112,7 +119,35 @@ class parallelglm_class_QR {
 
       arma::mat dev_mat; dev_mat = 0.; /* we compute this later */
 
+      if(do_inner){
+        /* do not need to initalize when beta is zero. We do it anyway as we
+         * later perform an addition for all elements */
+        int dsryk_n = X.n_cols, k = X.n_rows;
+        arma::mat C(dsryk_n, dsryk_n, arma::fill::zeros);
+
+        R_BLAS_LAPACK::dsyrk(
+          &char_U /*uplo*/, &char_T /*trans*/, &dsryk_n, &k /*k*/,
+          &double_one /*alpha*/, X.memptr() /*A*/, &k /*lda*/,
+          &double_zero /*beta*/, C.memptr(), &dsryk_n /*LDC*/);
+
+        return { std::move(C), X.t() * z, dev_mat };
+      }
+
       return { std::move(X), std::move(z), dev_mat};
+    }
+  };
+
+  class get_inner_worker {
+    const uword i_start, i_end;
+    data_holder_base &data;
+
+  public:
+    get_inner_worker
+    (uword i_start, uword i_end, data_holder_base &data):
+    i_start(i_start), i_end(i_end), data(data) {}
+
+    qr_work_chunk operator()() const {
+      return glm_qr_data_generator(i_start, i_end, data, true).get_chunk();
     }
   };
 
@@ -145,7 +180,14 @@ class parallelglm_class_QR {
           if(ISNA(*c))
             *c = 0.;
 
-        eta = data.X.rows(i_start, i_end) * coef + offset;
+        eta = offset;
+
+        int n_i = n, p = coef.n_elem, N = data.X.n_rows;
+        R_BLAS_LAPACK::dgemv(
+          &char_N, &n_i /*m*/, &p /*n*/, &double_one /*alpha*/,
+          data.X.memptr() + i_start /*A*/, &N /*LDA*/,
+          coef.memptr() /*X*/, &int_one /*incx*/, &double_one /*beta*/,
+          eta.memptr() /*Y*/, &int_one /*incy*/);
       }
 
       data.family.linkinv(mu, eta);
@@ -193,11 +235,12 @@ class parallelglm_class_QR {
     }
   }
 
-  static R_F get_R_f(data_holder_base &data, qr_parallel &pool){
-    submit_tasks(data, pool);
+  static R_F get_R_f(data_holder_base &data, qr_parallel &pool)
+    {
+      submit_tasks(data, pool);
 
-    return pool.compute();
-  }
+      return pool.compute();
+    }
 
   static qr_dqrls_res get_dqrls_res(data_holder_base &data, qr_parallel &pool,
                                  const double tol)
@@ -206,6 +249,49 @@ class parallelglm_class_QR {
 
       return pool.compute_dqrls(tol);
     }
+
+  struct inner_output {
+    arma::mat C;
+    arma::mat c;
+  };
+
+  static inner_output get_inner(data_holder_base &data, qr_parallel &pool)
+  {
+    std::vector<std::future<qr_work_chunk> > futures;
+
+    uword n = data.X.n_rows, i_start = 0, i_end = 0.;
+    for(; i_start < n; i_start = i_end + 1L){
+      i_end = std::min(n - 1, i_start + data.block_size - 1);
+      if(i_start == 0L)
+        /* add extra from the residual chunk */
+        i_end += n % data.block_size;
+      futures.push_back(
+        pool.th_pool.submit(get_inner_worker(
+            i_start, i_end, data)));
+    }
+
+    inner_output out;
+    bool is_first = true;
+    while(!futures.empty()){
+      auto o = futures.back().get();
+      futures.pop_back();
+
+      if(is_first){
+        out.C = o.X;
+        out.c = o.Y;
+        is_first = false;
+        continue;
+      }
+
+      /* TODO: could just take the upper part */
+      out.C += o.X;
+      out.c += o.Y;
+    }
+
+    out.C = arma::symmatu(out.C);
+
+    return out;
+  }
 
 public:
   static parallelglm_res compute(
@@ -259,6 +345,20 @@ public:
           beta[o.R_F.pivot[i]] = o.coefficients[i];
         rank = o.rank;
 
+      } else if(method == "FAST"){
+        auto o = get_inner(data, pool);
+        arma::uvec pivot(o.C.n_cols);
+        for(arma::uword j = 0; j < o.C.n_cols; ++j)
+          pivot[j] = j;
+        R_f_out.reset(new R_F{
+            arma::chol(o.C), std::move(pivot), std::move(o.c),
+            arma::mat()});
+        beta = arma::solve(R_f_out->R.t(), R_f_out->F.col(0),
+                           arma::solve_opts::no_approx);
+        beta = arma::solve(R_f_out->R    , beta,
+                           arma::solve_opts::no_approx);
+        rank = beta.n_elem;
+
       } else
         Rcpp::stop("method '" + method + "' not implemented");
 
@@ -279,8 +379,8 @@ public:
         break;
     }
 
-    return { beta, *R_f_out.get(), dev, (arma::uword)MIN(i + 1L, it_max),
-             i < it_max, rank };
+    return { beta, *R_f_out.get(), dev,
+             (arma::uword)MIN(i + 1L, it_max), i < it_max, rank };
   }
 };
 
