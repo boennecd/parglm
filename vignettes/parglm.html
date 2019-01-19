@@ -11,7 +11,7 @@
 
 <meta name="author" content="Benjamin Christoffersen" />
 
-<meta name="date" content="2018-11-30" />
+<meta name="date" content="2019-01-19" />
 
 <title>Introduction to the parglm package</title>
 
@@ -124,15 +124,15 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Introduction to the parglm package</h1>
 <h4 class="author"><em>Benjamin Christoffersen</em></h4>
-<h4 class="date"><em>2018-11-30</em></h4>
+<h4 class="date"><em>2019-01-19</em></h4>
 
 </div>
 
 
-<p>The motivation for the <code>parglm</code> package is a parallel version of the <code>glm</code> function. It solves the iteratively re-weighted least squares using a QR decomposition with column pivoting with <code>DGEQP3</code> function from LAPACK. The computation is done in parallel as in the <code>bam</code> function in the <code>mgcv</code> package. The cost is an additional <span class="math inline">\(O(Mp^2 + p^3)\)</span> where <span class="math inline">\(p\)</span> is the number of coefficients and <span class="math inline">\(M\)</span> is the number chunks to be computed in parallel. The advantage is that you do not need to compile the package with an optimized BLAS or LAPACK which supports multithreading.</p>
+<p>The motivation for the <code>parglm</code> package is a parallel version of the <code>glm</code> function. It solves the iteratively re-weighted least squares using a QR decomposition with column pivoting with <code>DGEQP3</code> function from LAPACK. The computation is done in parallel as in the <code>bam</code> function in the <code>mgcv</code> package. The cost is an additional <span class="math inline">\(O(Mp^2 + p^3)\)</span> where <span class="math inline">\(p\)</span> is the number of coefficients and <span class="math inline">\(M\)</span> is the number chunks to be computed in parallel. The advantage is that you do not need to compile the package with an optimized BLAS or LAPACK which supports multithreading. The package also includes a method that computes the Fisher information and then solves the normal equation as in the <code>speedglm</code> package. This is faster but less numerically stable.</p>
 <div id="example-of-computation-time" class="section level2">
 <h2>Example of computation time</h2>
-<p>Below, we perform estimate a logistic regression with 1000000 observations and 50 covariates. We vary the number of cores being used with the <code>nthreads</code> argument to <code>parglm.control</code>.</p>
+<p>Below, we perform estimate a logistic regression with 1000000 observations and 50 covariates. We vary the number of cores being used with the <code>nthreads</code> argument to <code>parglm.control</code>. The <code>method</code> arguments sets which method is used. <code>LINPACK</code> yields the QR method and <code>FAST</code> yields a similar method as in the <code>speedglm</code> package.</p>
 <pre class="r"><code>#####
 # simulate
 n # number of observations
@@ -146,86 +146,100 @@ df &lt;- data.frame(y = 1/(1 + exp(-(rowSums(X) - 1))) &gt; runif(n), X)</code><
 # compute and measure time. Setup call to make
 library(microbenchmark)
 library(speedglm)
-#&gt; Loading required package: Matrix
-#&gt; Loading required package: MASS
 library(parglm)
 cl &lt;- list(
   quote(microbenchmark), 
   glm      = quote(glm     (y ~ ., binomial(), df)), 
   speedglm = quote(speedglm(y ~ ., family = binomial(), data = df)), 
   times = 11L)
+tfunc &lt;- function(method = &quot;LINPACK&quot;, nthreads)
+  parglm(y ~ ., binomial(), df, control = parglm.control(method = method,
+                                                         nthreads = nthreads))
 cl &lt;- c(
-  cl, lapply(1:n_threads, function(i) bquote(parglm(
-      y ~ ., binomial(), df, control = parglm.control(nthreads = .(i))))))
-names(cl)[5:(5L + n_threads - 1L)] &lt;- paste0(&quot;parglm.&quot;, 1:n_threads)
+  cl, lapply(1:n_threads, function(i) bquote(tfunc(nthreads = .(i)))))
+names(cl)[5:(5L + n_threads - 1L)] &lt;- paste0(&quot;parglm-LINPACK-&quot;, 1:n_threads)
+
+cl &lt;- c(
+  cl, lapply(1:n_threads, function(i) bquote(tfunc(
+    nthreads = .(i), method = &quot;FAST&quot;))))
+names(cl)[(5L + n_threads):(5L + 2L * n_threads - 1L)] &lt;- 
+  paste0(&quot;parglm-FAST-&quot;, 1:n_threads)
+
 cl &lt;- as.call(cl)
 cl # the call we make
 #&gt; microbenchmark(glm = glm(y ~ ., binomial(), df), speedglm = speedglm(y ~ 
-#&gt;     ., family = binomial(), data = df), times = 11L, parglm.1 = parglm(y ~ 
-#&gt;     ., binomial(), df, control = parglm.control(nthreads = 1L)), 
-#&gt;     parglm.2 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 2L)), 
-#&gt;     parglm.3 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 3L)), 
-#&gt;     parglm.4 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 4L)), 
-#&gt;     parglm.5 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 5L)), 
-#&gt;     parglm.6 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 6L)), 
-#&gt;     parglm.7 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 7L)), 
-#&gt;     parglm.8 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 8L)), 
-#&gt;     parglm.9 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 9L)), 
-#&gt;     parglm.10 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 10L)), 
-#&gt;     parglm.11 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 11L)), 
-#&gt;     parglm.12 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 12L)), 
-#&gt;     parglm.13 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 13L)), 
-#&gt;     parglm.14 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 14L)), 
-#&gt;     parglm.15 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 15L)), 
-#&gt;     parglm.16 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 16L)), 
-#&gt;     parglm.17 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 17L)), 
-#&gt;     parglm.18 = parglm(y ~ ., binomial(), df, control = parglm.control(nthreads = 18L)))
+#&gt;     ., family = binomial(), data = df), times = 11L, `parglm-LINPACK-1` = tfunc(nthreads = 1L), 
+#&gt;     `parglm-LINPACK-2` = tfunc(nthreads = 2L), `parglm-LINPACK-3` = tfunc(nthreads = 3L), 
+#&gt;     `parglm-LINPACK-4` = tfunc(nthreads = 4L), `parglm-LINPACK-5` = tfunc(nthreads = 5L), 
+#&gt;     `parglm-LINPACK-6` = tfunc(nthreads = 6L), `parglm-LINPACK-7` = tfunc(nthreads = 7L), 
+#&gt;     `parglm-LINPACK-8` = tfunc(nthreads = 8L), `parglm-LINPACK-9` = tfunc(nthreads = 9L), 
+#&gt;     `parglm-LINPACK-10` = tfunc(nthreads = 10L), `parglm-LINPACK-11` = tfunc(nthreads = 11L), 
+#&gt;     `parglm-LINPACK-12` = tfunc(nthreads = 12L), `parglm-LINPACK-13` = tfunc(nthreads = 13L), 
+#&gt;     `parglm-LINPACK-14` = tfunc(nthreads = 14L), `parglm-LINPACK-15` = tfunc(nthreads = 15L), 
+#&gt;     `parglm-LINPACK-16` = tfunc(nthreads = 16L), `parglm-LINPACK-17` = tfunc(nthreads = 17L), 
+#&gt;     `parglm-LINPACK-18` = tfunc(nthreads = 18L), `parglm-FAST-1` = tfunc(nthreads = 1L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-2` = tfunc(nthreads = 2L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-3` = tfunc(nthreads = 3L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-4` = tfunc(nthreads = 4L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-5` = tfunc(nthreads = 5L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-6` = tfunc(nthreads = 6L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-7` = tfunc(nthreads = 7L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-8` = tfunc(nthreads = 8L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-9` = tfunc(nthreads = 9L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-10` = tfunc(nthreads = 10L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-11` = tfunc(nthreads = 11L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-12` = tfunc(nthreads = 12L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-13` = tfunc(nthreads = 13L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-14` = tfunc(nthreads = 14L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-15` = tfunc(nthreads = 15L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-16` = tfunc(nthreads = 16L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-17` = tfunc(nthreads = 17L, 
+#&gt;         method = &quot;FAST&quot;), `parglm-FAST-18` = tfunc(nthreads = 18L, 
+#&gt;         method = &quot;FAST&quot;))
 
-out &lt;- eval(cl)
-out # result from `microbenchmark`
-#&gt; Unit: seconds
-#&gt;       expr          min           lq         mean       median
-#&gt;        glm 14.664183436 15.142964143 15.359909494 15.357251653
-#&gt;   speedglm  4.160371122  4.351599990  4.505175301  4.534135479
-#&gt;   parglm.1 14.040355754 14.256539875 14.447254389 14.317053364
-#&gt;   parglm.2  8.097443764  8.230703448  8.328262646  8.347219467
-#&gt;   parglm.3  6.168558256  6.347356559  6.424184280  6.374353850
-#&gt;   parglm.4  5.165502747  5.283149803  5.417304522  5.363076448
-#&gt;   parglm.5  4.810409093  4.885059232  4.924094087  4.898993941
-#&gt;   parglm.6  4.398426582  4.498921604  4.572517292  4.536117187
-#&gt;   parglm.7  3.989745670  4.289205034  4.438808745  4.312579607
-#&gt;   parglm.8  3.734255472  3.845036883  3.933654374  3.886812792
-#&gt;   parglm.9  3.606355736  3.784380729  3.834237312  3.844424493
-#&gt;  parglm.10  3.506911881  3.591147161  3.693741434  3.752214612
-#&gt;  parglm.11  3.477937149  3.570801288  3.662652198  3.643519327
-#&gt;  parglm.12  3.425783029  3.639414636  3.688808502  3.715098478
-#&gt;  parglm.13  3.474147284  3.538742400  3.635620782  3.632767966
-#&gt;  parglm.14  3.521833685  3.538202849  3.601729880  3.607005144
-#&gt;  parglm.15  3.305234132  3.491077809  3.550258434  3.522581336
-#&gt;  parglm.16  3.240033543  3.430452463  3.454401389  3.444174413
-#&gt;  parglm.17  3.203461849  3.501414602  3.585395625  3.584022080
-#&gt;  parglm.18  3.307874988  3.428346126  3.486111342  3.483652460
-#&gt;            uq          max neval
-#&gt;  15.573597313 16.136311482    11
-#&gt;   4.680091949  4.785079991    11
-#&gt;  14.492168656 15.270763969    11
-#&gt;   8.385989789  8.556541071    11
-#&gt;   6.464724652  6.849861483    11
-#&gt;   5.529647848  5.772380820    11
-#&gt;   4.939256538  5.206973645    11
-#&gt;   4.600189266  4.825965083    11
-#&gt;   4.470814191  5.456749171    11
-#&gt;   3.998508303  4.268670305    11
-#&gt;   3.888851395  4.008523665    11
-#&gt;   3.774280622  3.833249127    11
-#&gt;   3.722089552  4.012767892    11
-#&gt;   3.777905645  3.837944544    11
-#&gt;   3.657921917  3.970971003    11
-#&gt;   3.649676988  3.691742054    11
-#&gt;   3.578856413  3.924502651    11
-#&gt;   3.481927329  3.681751508    11
-#&gt;   3.627848398  4.059285339    11
-#&gt;   3.558279670  3.623624636    11</code></pre>
+out &lt;- eval(cl)</code></pre>
+<pre class="r"><code>s &lt;- summary(out) # result from `microbenchmark`
+print(s[, c(&quot;expr&quot;, &quot;min&quot;, &quot;mean&quot;, &quot;median&quot;, &quot;max&quot;)], digits  = 3, 
+      row.names = FALSE) 
+#&gt;               expr   min  mean median   max
+#&gt;                glm 14.87 15.35  15.28 16.20
+#&gt;           speedglm  4.13  4.57   4.62  4.75
+#&gt;   parglm-LINPACK-1 13.23 13.42  13.39 13.67
+#&gt;   parglm-LINPACK-2  7.78  7.93   7.97  8.03
+#&gt;   parglm-LINPACK-3  5.97  6.12   6.09  6.35
+#&gt;   parglm-LINPACK-4  5.13  5.29   5.28  5.51
+#&gt;   parglm-LINPACK-5  4.61  4.80   4.84  4.90
+#&gt;   parglm-LINPACK-6  4.26  4.44   4.43  4.60
+#&gt;   parglm-LINPACK-7  4.02  4.26   4.32  4.41
+#&gt;   parglm-LINPACK-8  3.89  4.04   4.01  4.26
+#&gt;   parglm-LINPACK-9  3.71  3.92   4.00  4.11
+#&gt;  parglm-LINPACK-10  3.58  3.77   3.72  3.99
+#&gt;  parglm-LINPACK-11  3.60  3.70   3.68  3.96
+#&gt;  parglm-LINPACK-12  3.54  3.68   3.66  3.83
+#&gt;  parglm-LINPACK-13  3.57  3.73   3.72  3.87
+#&gt;  parglm-LINPACK-14  3.47  3.57   3.57  3.67
+#&gt;  parglm-LINPACK-15  3.31  3.64   3.60  4.38
+#&gt;  parglm-LINPACK-16  3.14  3.57   3.58  3.85
+#&gt;  parglm-LINPACK-17  3.38  3.60   3.56  3.80
+#&gt;  parglm-LINPACK-18  3.19  3.48   3.50  3.70
+#&gt;      parglm-FAST-1  4.03  4.16   4.15  4.30
+#&gt;      parglm-FAST-2  2.88  3.08   2.97  3.35
+#&gt;      parglm-FAST-3  2.33  2.62   2.65  2.84
+#&gt;      parglm-FAST-4  2.32  2.51   2.49  2.67
+#&gt;      parglm-FAST-5  2.36  2.50   2.51  2.58
+#&gt;      parglm-FAST-6  2.00  2.32   2.31  2.56
+#&gt;      parglm-FAST-7  2.19  2.36   2.40  2.44
+#&gt;      parglm-FAST-8  1.97  2.23   2.26  2.36
+#&gt;      parglm-FAST-9  1.96  2.06   2.04  2.19
+#&gt;     parglm-FAST-10  1.94  2.14   2.18  2.34
+#&gt;     parglm-FAST-11  1.90  2.12   2.08  2.30
+#&gt;     parglm-FAST-12  1.99  2.13   2.07  2.32
+#&gt;     parglm-FAST-13  1.92  2.12   2.16  2.24
+#&gt;     parglm-FAST-14  1.92  2.08   2.04  2.24
+#&gt;     parglm-FAST-15  1.88  2.07   2.03  2.26
+#&gt;     parglm-FAST-16  1.88  2.04   2.04  2.19
+#&gt;     parglm-FAST-17  1.91  2.08   2.08  2.30
+#&gt;     parglm-FAST-18  1.97  2.15   2.19  2.30</code></pre>
 <p>The plot below shows median run times versus the number of cores. The dashed line is the median run time of <code>glm</code> and the dotted line is the median run time of <code>speedglm</code>. We could have used <code>glm.fit</code> and <code>parglm.fit</code>. This would make the relative difference bigger as both call e.g., <code>model.matrix</code> and <code>model.frame</code> which do take some time. To show this point, we first compute how much times this takes and then we make the plot. The continuous line is the computation time of <code>model.matrix</code> and <code>model.frame</code>.</p>
 <pre class="r"><code>modmat_time &lt;- microbenchmark(
   modmat_time = {
@@ -234,20 +248,25 @@ out # result from `microbenchmark`
 modmat_time # time taken by `model.matrix` and `model.frame`
 #&gt; Unit: milliseconds
 #&gt;         expr        min          lq        mean      median          uq
-#&gt;  modmat_time 975.142461 1038.157711 1123.963102 1108.838174 1186.264465
+#&gt;  modmat_time 976.246588 1177.963766 1183.842476 1182.462718 1196.209505
 #&gt;          max neval
-#&gt;  1295.933611    10</code></pre>
+#&gt;  1356.438417    10</code></pre>
 <pre class="r"><code>par(mar = c(4.5, 4.5, .5, .5))
 o &lt;- aggregate(time ~ expr, out, median)[, 2] / 10^9
 ylim &lt;- range(o, 0); ylim[2] &lt;- ylim[2] + .04 * diff(ylim)
-plot(1:n_threads, o[-(1:2)], xlab = &quot;Number of cores&quot;, yaxs = &quot;i&quot;,
+
+o_linpack &lt;- o[-c(1:2, (n_threads + 3L):length(o))]
+o_fast    &lt;- o[-(1:(n_threads + 2L))]
+
+plot(1:n_threads, o_linpack, xlab = &quot;Number of cores&quot;, yaxs = &quot;i&quot;,
      ylim = ylim, ylab = &quot;Run time&quot;, pch = 16)
+points(1:n_threads, o_fast, pch = 1)
 abline(h = o[1], lty = 2)
 abline(h = o[2], lty = 3)
 abline(h = median(modmat_time$time) / 10^9, lty = 1)</code></pre>
-<p><img src="data:image/png;base64,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" width="672" /></p>
-<p>It is worth mentioning that <code>speedglm</code> computes the cross product of the weighted design matrix. This is advantages in terms of computation cost but may lead to unstable solutions. You can alter the number of observations in each parallel chunk with the <code>block_size</code> argument of <code>parglm.control</code>.</p>
-<p>The single threaded performance of <code>parglm</code> may be slower when there are more coefficients. The cause seems to be the difference between the LAPACK and LINPACK implementation. This presumably due to either the QR decomposition method and/or the <code>qr.qty</code> method. On Windows, the <code>parglm</code> do seems slower when build with <code>Rtools</code> and the reason seems so be the <code>qr.qty</code> method in LAPACK, <code>dormqr</code>, which is slower then the LINPACK method, <code>dqrsl</code>. Below is an illustration of the cost on this machine.</p>
+<p><img src="data:image/png;base64,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" width="672" /></p>
+<p>The open circles are the <code>FAST</code> method and the other circles are the <code>LINPACK</code> method. Again, the <code>FAST</code> method and the <code>speedglm</code> package compute the Fisher information and then solves the normal equation. This is advantages in terms of computation cost but may lead to unstable solutions. You can alter the number of observations in each parallel chunk with the <code>block_size</code> argument of <code>parglm.control</code>.</p>
+<p>The single threaded performance of <code>parglm</code> may be slower when there are more coefficients. The cause seems to be the difference between the LAPACK and LINPACK implementation. This presumably due to either the QR decomposition method and/or the <code>qr.qty</code> method. On Windows, the <code>parglm</code> do seems slower when build with <code>Rtools</code> and the reason seems so be the <code>qr.qty</code> method in LAPACK, <code>dormqr</code>, which is slower then the LINPACK method, <code>dqrsl</code>. Below is an illustration of the computation times on this machine.</p>
 <pre class="r"><code>qr1 &lt;- qr(X)
 qr2 &lt;- qr(X, LAPACK = TRUE)
 microbenchmark::microbenchmark(
@@ -257,16 +276,16 @@ microbenchmark::microbenchmark(
   `qr.qty LAPACK`  = qr.qty(qr2, df$y), 
   times = 11)
 #&gt; Unit: milliseconds
-#&gt;            expr         min          lq         mean      median
-#&gt;      qr LINPACK 3139.280366 3139.972717 3172.8539782 3165.433464
-#&gt;       qr LAPACK 2505.847082 2508.290932 2530.4196005 2511.217432
-#&gt;  qr.qty LINPACK  484.775217  487.073020  498.7921702  490.264909
-#&gt;   qr.qty LAPACK  527.644000  531.328690  536.2391545  533.904810
+#&gt;            expr         min           lq         mean      median
+#&gt;      qr LINPACK 3110.641142 3115.4115140 3139.2611351 3133.540966
+#&gt;       qr LAPACK 2493.754534 2497.5766770 2516.8324145 2498.076688
+#&gt;  qr.qty LINPACK  474.270743  478.8815830  494.5624567  492.309339
+#&gt;   qr.qty LAPACK  529.304587  530.3935825  530.7427405  530.972688
 #&gt;            uq         max neval
-#&gt;  3174.0074470 3323.203293    11
-#&gt;  2525.3808670 2683.391819    11
-#&gt;   508.2082865  532.550945    11
-#&gt;   534.9791345  570.248979    11</code></pre>
+#&gt;  3138.1808365 3263.890541    11
+#&gt;  2512.5776900 2644.825526    11
+#&gt;   507.2853105  526.827080    11
+#&gt;   531.3701745  531.790984    11</code></pre>
 </div>
 <div id="session-info" class="section level2">
 <h2>Session info</h2>

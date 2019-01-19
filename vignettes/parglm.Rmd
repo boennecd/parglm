@@ -28,13 +28,14 @@ stable.
 ```{r set_params, echo = FALSE}
 n <- 1000000L
 p <- 50L
-n_threads <- 16L
+n_threads <- 18L
 ```
 
 Below, we perform estimate a logistic regression with `r n` observations 
 and `r p` covariates. We vary the number of cores being used with the
-`nthreads` argument to `parglm.control`. The `method` arguments sets the which
-method is used.
+`nthreads` argument to `parglm.control`. The `method` arguments sets which
+method is used. `LINPACK` yields the QR method and `FAST` yields a similar 
+method as in the `speedglm` package.
 
 ```{r sim}
 #####
@@ -75,7 +76,12 @@ cl <- as.call(cl)
 cl # the call we make
 
 out <- eval(cl)
-out # result from `microbenchmark`
+```
+
+```{r show_out}
+s <- summary(out) # result from `microbenchmark`
+print(s[, c("expr", "min", "mean", "median", "max")], digits  = 3, 
+      row.names	= FALSE) 
 ```
 
 The plot below shows median run times versus the number of cores. The dashed line 
@@ -115,7 +121,7 @@ abline(h = median(modmat_time$time) / 10^9, lty = 1)
 ```
 
 The open circles are the `FAST` method and the other circles are the `LINPACK`
-method. Again, the `FAST` method and the `speedglm` package compute Fisher 
+method. Again, the `FAST` method and the `speedglm` package compute the Fisher 
 information and then solves the normal equation. 
 This is advantages in terms of computation cost but may lead to unstable 
 solutions. You can alter the number of observations in each parallel chunk 
@@ -127,7 +133,7 @@ This presumably due to either the QR decomposition method and/or the `qr.qty` me
 On Windows, the `parglm` do seems slower when build with `Rtools` and the reason 
 seems so be the `qr.qty` method in LAPACK, `dormqr`, which is slower then the 
 LINPACK method, `dqrsl`. Below is an illustration of the 
-cost on this machine. 
+computation times on this machine. 
 
 ```{r check_qr_qty, cache = 1}
 qr1 <- qr(X)
