@@ -170,6 +170,21 @@ parglm.fit <- function(
   if (is.null(offset))
     offset <- rep.int(0, nobs)
 
+  n_min_per_thread <- 10L
+  n_per_thread <- nrow(x) / control$nthreads
+  if(n_per_thread < n_min_per_thread){
+    nthreads_new <- nrow(x) %/% n_min_per_thread
+    if(nthreads_new < 1L)
+      nthreads_new <- 1L
+
+    warning(
+      "Too few observation compared to the number of threads. ",
+      nthreads_new, " thread(s) will be used instead of ",
+      control$nthreads, ".")
+
+    control$nthreads <- nthreads_new
+  }
+
   block_size <- if(!is.null(control$block_size))
     control$block_size else
       if(control$nthreads > 1L)
