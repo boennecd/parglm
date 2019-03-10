@@ -165,6 +165,10 @@ public:
     return *this;
   }
 
+  bool has_value () const {
+    return (bool)impl;
+  }
+
   function_wrapper(const function_wrapper&)=delete;
   function_wrapper(function_wrapper&)=delete;
   function_wrapper& operator=(const function_wrapper&)=delete;
@@ -174,20 +178,24 @@ public:
 class thread_pool
 {
   thread_safe_queue<function_wrapper> work_queue;
+  std::condition_variable cv;
+  std::mutex mu;
 
   void worker_thread()
   {
-    while(!done)
-    {
+    for(;;){
       function_wrapper task;
-      if(work_queue.try_pop(task))
-      {
-        task();
+
+      bool got_task = work_queue.try_pop(task);
+      if(!got_task){
+        std::unique_lock<std::mutex> lk(mu);
+        cv.wait(lk, [&]{ return work_queue.try_pop(task) or done; });
+
+        if(done and !task.has_value())
+          return;
       }
-      else
-      {
-        std::this_thread::yield();
-      }
+
+      task();
     }
   }
 
@@ -209,6 +217,10 @@ public:
     std::packaged_task<result_type()> task(std::move(f));
     std::future<result_type> res(task.get_future());
     work_queue.push(std::move(task));
+    {
+      std::unique_lock<std::mutex> lk(mu);
+      cv.notify_one();
+    }
     return res;
   }
 
@@ -230,14 +242,22 @@ public:
     }
     catch(...)
     {
-      done=true;
+      {
+        std::unique_lock<std::mutex> lk(mu);
+        done=true;
+      }
+      cv.notify_all();
       throw;
     }
   }
 
   ~thread_pool()
   {
-    done=true;
+    {
+      std::unique_lock<std::mutex> lk(mu);
+      done=true;
+    }
+    cv.notify_all();
   }
 };
 

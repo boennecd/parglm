@@ -3,8 +3,9 @@
 #include "parallel_qr.h"
 #include "family.h"
 #include "R_BLAS_LAPACK.h"
+#include <memory>
 
-/* #define PARGLM_PROF 1 */
+/* #define PARGLM_PROF */
 #ifdef PARGLM_PROF
 #include <gperftools/profiler.h>
 #include <iostream>
@@ -27,6 +28,7 @@ public:
   arma::vec &offsets;
   arma::vec eta;
   arma::vec mu;
+  std::unique_ptr<double[]> X_work_mem;
 
   const arma::uword max_threads, p, n;
   const glm_base &family;
@@ -37,10 +39,10 @@ public:
     const arma::uword max_threads, const arma::uword p, const arma::uword n,
     const glm_base &family, arma::uword block_size = 10000):
     X(X), Ys(Ys), weights(weights), offsets(offsets), eta(Ys.n_elem),
-    mu(Ys.n_elem),
+    mu(Ys.n_elem), X_work_mem(new double[X.n_elem]),
     max_threads(max_threads), p(p), n(n), family(std::move(family)),
     block_size(block_size)
-  {}
+  { }
 };
 
 struct parallelglm_res {
@@ -51,6 +53,14 @@ struct parallelglm_res {
   const bool conv;
   const arma::uword rank;
 };
+
+void thread_to_rcout(const std::string &msg){
+  static std::mutex cpp_out_m;
+  {
+    std::lock_guard<std::mutex> lk(cpp_out_m);
+    Rcpp::Rcout << msg;
+  }
+}
 
 const double double_one = 1., double_zero = 0.;
 const int int_one = 1;
@@ -75,7 +85,7 @@ class parallelglm_class_QR {
     qr_work_chunk get_chunk() const override {
       /* assign objects for later use */
       arma::span my_span(i_start, i_end);
-      int n = i_end - i_start + 1;
+      arma::uword n = i_end - i_start + 1;
 
       arma::vec y     (data.Ys.begin()      + i_start           , n, false);
       arma::vec weight(data.weights.begin() + i_start           , n, false);
@@ -87,33 +97,33 @@ class parallelglm_class_QR {
       arma::vec mu_eta_val = data.family.mu_eta(eta);
 
       arma::uvec good = arma::find((weight > 0) % (mu_eta_val != 0.));
-      const bool is_all_good = good.n_elem == i_end - i_start + 1L;
+      const bool is_all_good = good.n_elem == n;
 
       arma::vec z, w;
-      if(is_all_good){
-        arma::vec var = data.family.variance(mu);
+      arma::vec var = data.family.variance(mu);
 
-        z = (eta - offset) + (y - mu) / mu_eta_val;
-        w = arma::sqrt(weight % arma::square(mu_eta_val) / var);
+      z = (eta - offset) + (y - mu) / mu_eta_val;
+      w = arma::sqrt(weight % arma::square(mu_eta_val) / var);
 
-      } else {
-        mu = mu(good);
-        eta = eta(good);
-        mu_eta_val = mu_eta_val(good);
-        arma::vec var = data.family.variance(mu);
+      /* ensure that bad entries has zero weight */
+      if(!is_all_good){
+        auto good_next = good.begin();
+        auto w_i = w.begin();
+        for(arma::uword i = 0; i < w.n_elem; ++i, ++w_i){
+          if(i == *good_next){
+            ++good_next;
+            continue;
 
-        z = (eta - offset(good)) + (y(good) - mu) / mu_eta_val;
-        w = arma::sqrt((weight(good) % arma::square(mu_eta_val)) / var);
+          }
+
+          *w_i = 0.;
+
+        }
       }
 
-      arma::mat X;
-      if(is_all_good)
-        X = data.X.rows(i_start, i_end);
-      else {
-        good += i_start;
-        X = data.X.rows(good);
-      }
-
+      const arma::uword p = data.X.n_cols;
+      arma::mat X(data.X_work_mem.get() + i_start * p, n, p, false, true);
+      X = data.X.rows(i_start, i_end);
       X.each_col() %= w;
       z %= w;
 

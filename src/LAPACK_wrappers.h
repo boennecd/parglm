@@ -18,10 +18,10 @@ class QR_factorization {
   void init();
 
 public:
-  QR_factorization(arma::mat&&);
-  QR_factorization(const arma::mat&);
+  QR_factorization(arma::mat&);
 
   arma::mat qy(const arma::mat&, const bool transpose = false) const;
+  arma::mat qy(arma::mat&&, const bool) const;
   arma::vec qy(const arma::vec&, const bool transpose = false) const;
   arma::mat R() const;
   arma::uvec pivot() const;

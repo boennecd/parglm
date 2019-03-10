@@ -11,18 +11,9 @@ if(info_sym < 0){                                                               
   Rcpp::stop(ss.str());                                                                      \
 }
 
-QR_factorization::QR_factorization(arma::mat &&A):
+QR_factorization::QR_factorization(arma::mat &A):
   M(A.n_rows), N(A.n_cols), qraux(new double[MIN(M, N)]),
-  pivot_(new int[N]), Amat(A) {
-  init();
-}
-
-QR_factorization::QR_factorization(const arma::mat &A):
-  M(A.n_rows), N(A.n_cols), qr(new double[M * N]),
-  qraux(new double[MIN(M, N)]), pivot_(new int[N]){
-  // copy A
-  std::memcpy(qr.get(), A.memptr(), M * N * sizeof(double));
-
+  pivot_(new int[N]), Amat(A.memptr(), A.n_rows, A.n_cols, false) {
   init();
 }
 
@@ -62,9 +53,15 @@ void QR_factorization::init(){
 }
 
 arma::mat QR_factorization::qy(
-    const arma::mat &B, const bool transpose) const {
+    const arma::mat &B, const bool transpose) const
+{
+  arma::mat out = B; /* copy */
+  return qy(std::move(out), transpose);
+}
+
+arma::mat QR_factorization::qy(
+    arma::mat &&B, const bool transpose) const {
   // take copy
-  arma::mat out = B;
   int NRHS = B.n_cols, K = MIN(M, N);
   if(B.n_rows != (unsigned int)M)
     Rcpp::stop("Invalid `B` matrix in `QR_factorization::qy`");
@@ -74,17 +71,17 @@ arma::mat QR_factorization::qy(
   double tmp;
   R_BLAS_LAPACK::dormqr(
     "L", transpose ? "T" : "N", &M, &NRHS, &K, get_qr_ptr(), &M, &qraux[0],
-    out.memptr(), &M, &tmp, &lwork, &info);
+    B.memptr(), &M, &tmp, &lwork, &info);
   LAPACK_CHECK_ILLEGAL(info, dormqr)
 
   lwork = (int) tmp;
   std::unique_ptr<double []> work(new double[lwork]);
   R_BLAS_LAPACK::dormqr(
     "L", transpose ? "T" : "N", &M, &NRHS, &K, get_qr_ptr(), &M, &qraux[0],
-    out.memptr(), &M, &work[0], &lwork, &info);
+    B.memptr(), &M, &work[0], &lwork, &info);
   LAPACK_CHECK_ILLEGAL(info, dormqr)
 
-  return out;
+  return B;
 }
 
 arma::vec QR_factorization::qy(
@@ -94,10 +91,7 @@ arma::vec QR_factorization::qy(
 }
 
 arma::mat QR_factorization::R() const {
-  arma::mat out(get_qr_ptr(), M, N);
-  out = out.rows(0, MIN(M, N) - 1);
-
-  return arma::trimatu(out);
+  return arma::trimatu(Amat.rows(0, MIN(M, N) - 1));
 }
 
 arma::uvec QR_factorization::pivot() const {
