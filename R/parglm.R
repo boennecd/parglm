@@ -66,7 +66,9 @@ parglm <- function(
   contrasts = NULL, model = TRUE, x = FALSE, y = TRUE, ...){
   cl <- match.call()
   cl[[1L]] <- quote(glm)
-  cl[c("method", "singular.ok")] <- list(quote(parglm::parglm.fit), FALSE)
+  cl["method"] <- list(quote(parglm::parglm.fit))
+  if("singular.ok" %in% names(formals(glm)))
+    cl["singular.ok"] <- FALSE
   eval(cl, parent.frame())
 }
 

@@ -1,6 +1,6 @@
 ## Test environments
 * Ubuntu 18.04 LTS
-  R version 3.5.1
+  R version 3.5.3
 * Ubuntu 14.04.5 LTS (on travis-ci with codename: trusty)
   R version 3.5.2
 * win-builder (devel and release)

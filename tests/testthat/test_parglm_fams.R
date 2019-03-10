@@ -73,7 +73,7 @@ sim_func <- function(family, n, p){
 test_expr <- expression({
   is_FAST <- method == "FAST"
   expect_equal(f1[to_check], f2[to_check], label = lab,
-               tolerance = if(is_FAST) 5e-7 else 1e-8)
+               tolerance = if(is_FAST) 1e-6 else 1e-8)
   # these may differ as `glm.fit` uses the weights from the iteration prior
   # to convergence
   expect_equal(f1$weights, f2$weights, tolerance = sqrt(1e-7), label = lab)
@@ -84,7 +84,7 @@ test_expr <- expression({
   excl <- c("call", "coefficients", "cov.unscaled", "cov.scaled",
             "dispersion")
   expect_equal(s1[!names(s1) %in% excl], s2[!names(s2) %in% excl],
-               label = lab, tolerance = if(is_FAST) 1e-6 else 1e-7)
+               label = lab, tolerance = if(is_FAST) 5e-6 else 1e-7)
   na <- rownames(s1$coefficients)
   expect_equal(s1$coefficients[na, 1:2], s2$coefficients[na, 1:2],
                label = lab, tolerance = sqrt(1e-7))
