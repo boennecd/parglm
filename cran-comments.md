@@ -19,3 +19,8 @@
 There were no ERRORs, or WARNINGs. There is a NOTE on `fedora-gcc-devel`
 on rhub, my local machine, and `debian-gcc-release` on rhub about the size 
 of the package.
+
+## Resubmission
+The `noLD` errors should be fixed. 
+
+I do not have some reference about the methods.
