@@ -60,7 +60,7 @@ arma::mat QR_factorization::qy(
 }
 
 arma::mat QR_factorization::qy(
-    arma::mat &&B, const bool transpose) const {
+    arma::mat &B, const bool transpose) const {
   // take copy
   int NRHS = B.n_cols, K = MIN(M, N);
   if(B.n_rows != (unsigned int)M)

@@ -99,17 +99,17 @@ class parallelglm_class_QR {
       arma::uvec good = arma::find((weight > 0) % (mu_eta_val != 0.));
       const bool is_all_good = good.n_elem == n;
 
-      arma::vec z, w;
       arma::vec var = data.family.variance(mu);
 
-      z = (eta - offset) + (y - mu) / mu_eta_val;
-      w = arma::sqrt(weight % arma::square(mu_eta_val) / var);
+      arma::vec z = (eta - offset) + (y - mu) / mu_eta_val,
+        w = arma::sqrt(weight % arma::square(mu_eta_val) / var);
 
       /* ensure that bad entries has zero weight */
       if(!is_all_good){
         auto good_next = good.begin();
         auto w_i = w.begin();
-        for(arma::uword i = 0; i < w.n_elem; ++i, ++w_i){
+        arma::uword i = 0;
+        for(; i < w.n_elem and good_next != good.end(); ++i, ++w_i){
           if(i == *good_next){
             ++good_next;
             continue;
@@ -119,6 +119,9 @@ class parallelglm_class_QR {
           *w_i = 0.;
 
         }
+
+        for(; i < w.n_elem; ++i, ++w_i)
+          *w_i = 0.;
       }
 
       const arma::uword p = data.X.n_cols;
@@ -127,7 +130,7 @@ class parallelglm_class_QR {
       X.each_col() %= w;
       z %= w;
 
-      arma::mat dev_mat; dev_mat = 0.; /* we compute this later */
+      arma::mat dev_mat(1L, 1L, arma::fill::zeros); /* we compute this later */
 
       if(do_inner){
         /* do not need to initalize when beta is zero. We do it anyway as we
