@@ -1,3 +1,6 @@
+# pargm 0.1.3
+* Fix bug found by Valgrind.
+
 # pargm 0.1.2
 * Minor changes in implementation.
 * Fix bugs in patched R and oldrel R.
