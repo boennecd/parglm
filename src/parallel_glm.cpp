@@ -5,7 +5,6 @@
 #include "R_BLAS_LAPACK.h"
 #include <memory>
 
-/* #define PARGLM_PROF */
 #ifdef PARGLM_PROF
 #include <gperftools/profiler.h>
 #include <iostream>
@@ -65,6 +64,19 @@ void thread_to_rcout(const std::string &msg){
 const double double_one = 1., double_zero = 0.;
 const int int_one = 1;
 char char_N = 'N', char_U = 'U', char_T = 'T';
+
+inline void inplace_copy
+  (arma::mat &X, const arma::mat &Y, const arma::uword start,
+   const arma::uword end)
+  {
+    double *x = X.begin();
+    const double *y = Y.begin() + start;
+
+    std::size_t n_ele = end - start + 1L;
+    for(unsigned int i = 0; i < X.n_cols;
+        ++i, x += X.n_rows, y += Y.n_rows)
+      std::memcpy(x, y, n_ele * sizeof(double));
+  }
 
 /* Class to fit glm using QR updated in chunks */
 class parallelglm_class_QR {
@@ -126,7 +138,7 @@ class parallelglm_class_QR {
 
       const arma::uword p = data.X.n_cols;
       arma::mat X(data.X_work_mem.get() + i_start * p, n, p, false, true);
-      X = data.X.rows(i_start, i_end);
+      inplace_copy(X, data.X, i_start, i_end);
       X.each_col() %= w;
       z %= w;
 

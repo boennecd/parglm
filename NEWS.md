@@ -1,5 +1,5 @@
 # pargm 0.1.3
-* Fix bug found by Valgrind.
+* Fix bug found with Valgrind.
 
 # pargm 0.1.2
 * Minor changes in implementation.
