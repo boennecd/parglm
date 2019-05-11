@@ -1,9 +1,9 @@
+parglm
+======
+
 [![Build Status on Travis](https://travis-ci.org/boennecd/parglm.svg?branch=master)](https://travis-ci.org/boennecd/parglm)
 [![](https://www.r-pkg.org/badges/version/parglm)](https://CRAN.R-project.org/package=parglm)
 [![CRAN RStudio mirror downloads](http://cranlogs.r-pkg.org/badges/parglm)](https://CRAN.R-project.org/package=parglm)
-
-parglm
-======
 
 The `parglm` package provides a parallel estimation method  for generalized 
 linear models without compiling with a multithreaded LAPACK or BLAS. You can install
