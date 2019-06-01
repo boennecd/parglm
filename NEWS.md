@@ -1,3 +1,7 @@
+# pargm 0.1.4
+* `stop`s when there are more variables than observations. Previously, this 
+  caused a crash.
+
 # pargm 0.1.3
 * Fix bug found with Valgrind.
 

@@ -1,5 +1,6 @@
 #include "parallel_qr.h"
 #include "LAPACK_wrappers.h"
+#include <algorithm>
 
 arma::mat R_F::R_rev_piv() const {
   arma::uvec piv = pivot;
@@ -14,7 +15,9 @@ qr_parallel::worker::worker
 R_F qr_parallel::worker::operator()(){
   qr_work_chunk my_chunk = my_generator->get_chunk();
   QR_factorization qr(my_chunk.X);
-  arma::mat F = qr.qy(my_chunk.Y, true).rows(0, my_chunk.X.n_cols - 1);
+  const unsigned n_rows =
+    std::min(my_chunk.X.n_cols - 1, my_chunk.Y.n_rows - 1);
+  arma::mat F = qr.qy(my_chunk.Y, true).rows(0, n_rows);
 
   return R_F { qr.R(), qr.pivot(), std::move(F), my_chunk.dev };
 }

@@ -9,8 +9,8 @@ parglm(formula, family = gaussian, data, weights, subset, na.action,
   start = NULL, offset, control = list(...), contrasts = NULL,
   model = TRUE, x = FALSE, y = TRUE, ...)
 
-parglm.fit(x, y, weights = rep(1, nobs), start = NULL,
-  etastart = NULL, mustart = NULL, offset = rep(0, nobs),
+parglm.fit(x, y, weights = rep(1, NROW(x)), start = NULL,
+  etastart = NULL, mustart = NULL, offset = rep(0, NROW(x)),
   family = gaussian(), control = list(), intercept = TRUE, ...)
 }
 \arguments{
@@ -70,6 +70,15 @@ matrix from the QR decomposition.
 Function like \code{\link{glm}} which can make the computation
 in parallel. The function supports most families listed in \code{\link{family}}.
 See "\code{vignette("parglm", "parglm")}" for run time examples.
+}
+\details{
+The current implementation uses \code{min(as.integer(n / p), nthreads)}
+threads where \code{n} is the number observations, \code{p} is the
+number of covariates, and \code{nthreads} is the \code{nthreads} element of
+the list
+returned by \code{\link{parglm.control}}. Thus, there is likely little (if
+any) reduction in computation time if \code{p} is almost equal to \code{n}.
+The current implementation cannot handle \code{p > n}.
 }
 \examples{
 # small example from `help('glm')`. Fitting this model in parallel does

@@ -46,6 +46,15 @@ NULL
 #' element. The \code{qr} element in the object returned by \code{parglm}(\code{.fit}) only has the \eqn{R}
 #' matrix from the QR decomposition.
 #'
+#' @details
+#' The current implementation uses \code{min(as.integer(n / p), nthreads)}
+#' threads where \code{n} is the number observations, \code{p} is the
+#' number of covariates, and \code{nthreads} is the \code{nthreads} element of
+#' the list
+#' returned by \code{\link{parglm.control}}. Thus, there is likely little (if
+#' any) reduction in computation time if \code{p} is almost equal to \code{n}.
+#' The current implementation cannot handle \code{p > n}.
+#'
 #' @examples
 #' # small example from `help('glm')`. Fitting this model in parallel does
 #' # not matter as the data set is small
@@ -140,11 +149,13 @@ parglm.control <- function(
 #' @importFrom stats gaussian binomial Gamma inverse.gaussian poisson
 #' @export
 parglm.fit <- function(
-  x, y, weights = rep(1, nobs), start = NULL, etastart = NULL,
-  mustart = NULL, offset = rep(0, nobs), family = gaussian(),
+  x, y, weights = rep(1, NROW(x)), start = NULL, etastart = NULL,
+  mustart = NULL, offset = rep(0, NROW(x)), family = gaussian(),
   control = list(), intercept = TRUE, ...){
   .check_fam(family)
   stopifnot(nrow(x) == length(y))
+  if(NCOL(x) > NROW(x))
+    stop("not implemented with more variables than observations")
 
   if(!is.null(mustart))
     warning(sQuote("mustart"), " will not be used")
@@ -193,6 +204,7 @@ parglm.fit <- function(
       if(control$nthreads > 1L)
         max(nrow(x) / control$nthreads, control$nthreads) else
           nrow(x)
+  block_size <- max(block_size, NCOL(x))
 
   use_start <- !is.null(start)
   fit <- parallelglm(

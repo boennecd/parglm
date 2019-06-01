@@ -264,7 +264,7 @@ test_that("'FASTs' fail when design matrix is singular", {
     f2 <- parglm(y ~ X, control = parglm.control(method = "FAST"))))
 })
 
-test_that("'parglm' yields the same as 'glm' also when one observations is not 'good'",{
+test_that("'parglm' yields the same as 'glm' also when one observations is not 'good'", {
   phat <- seq(.01, .99, by = .01)
   X <- log(phat / (1 - phat)) - 2
   set.seed(47313714)
@@ -284,4 +284,26 @@ test_that("'parglm' yields the same as 'glm' also when one observations is not '
   pfit <- parglm(Y ~ X, binomial(), weights = W,
                  control = parglm.control(nthreads = 2))
   expect_equal(fit[to_check], pfit[to_check])
+})
+
+test_that("'stop's when there are more variables than observations", {
+  set.seed(1)
+  n <- 20L
+  dframe <- cbind(data.frame(y = 1:n), replicate(n, rnorm(n)))
+
+  expect_error(
+    parglm(y ~ ., gaussian(), dframe),
+    "not implemented with more variables than observations", fixed = TRUE)
+
+  # check that it works with same number of observations as variables
+  dframe <- dframe[, 1:n]
+  fpar <- parglm(y ~ ., gaussian(), dframe, nthreads = 2)
+  fglm <-    glm(y ~ ., gaussian(), dframe)
+  expect_equal(coef(fpar), coef(fglm))
+
+  # and with almost the same number of variables as observations
+  dframe <- dframe[, 1:(n - 3L)]
+  fpar <- parglm(y ~ ., gaussian(), dframe, nthreads = 2)
+  fglm <-    glm(y ~ ., gaussian(), dframe)
+  expect_equal(coef(fpar), coef(fglm))
 })
