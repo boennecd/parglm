@@ -1,24 +1,16 @@
 ## Test environments
-* Ubuntu 18.04 LTS
-  R version 3.5.3
-* Ubuntu 14.04.5 LTS (on travis-ci with codename: trusty)
-  R version 3.5.2
-* win-builder (devel and release)
-* Local Ubuntu 18.04 with R 3.5.2 and with clang 6.0.0 with ASAN and 
+* Ubuntu 18.04 LTS with gcc 8.3.0
+  R version 3.6.1
+* Ubuntu 16.04 LTS (on travis-ci)
+  R version 3.6.1
+* Ubuntu 18.04 LTS with gcc 8.3.0 with --enable-lto
+  R devel (2019-11-06 r77376)
+* Ubuntu 18.04 LTS with clang 6.0.0 with ASAN and 
   UBSAN checks
-* The following rhub platforms:
-  fedora-clang-devel
-  fedora-gcc-devel
-  debian-gcc-patched
-  debian-gcc-devel
-  debian-gcc-release
-  linux-x86_64-rocker-gcc-san
-  solaris-x86-patched
-
+  R devel (2019-11-06 r77376)
+* win-builder (devel and release)
+* `rhub::check_on_solaris()`
+  
 ## R CMD check results
-There were no ERRORs, or WARNINGs. There is a NOTE on `fedora-gcc-devel`
-on rhub, my local machine, and `debian-gcc-release` on rhub about the size 
-of the package.
-
-## Resubmission
-`R CMD check --use-valgrind --as-cran` passes without any errors.
+The LTO issue have been solved. There is a note about the size of the 
+package on some platforms.

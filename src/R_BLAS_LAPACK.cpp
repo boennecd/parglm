@@ -1,6 +1,15 @@
-#include <Rcpp.h>
+#include <Rconfig.h>
 #include <R_ext/BLAS.h>
+#ifndef FCLEN
+#define FCLEN
+#endif
+#ifndef FCONE
+#define FCONE
+#endif
 #include <R_ext/Lapack.h>
+
+#include <Rcpp.h>
+
 #include <R_ext/Applic.h>
 #include "R_BLAS_LAPACK.h"
 
@@ -27,7 +36,7 @@ namespace R_BLAS_LAPACK {
         &n, &nrhs,
         A, &n,
         B, &n,
-        &info);
+        &info FCONE FCONE FCONE);
 
     if(info != 0){
       std::stringstream str;
@@ -42,7 +51,8 @@ namespace R_BLAS_LAPACK {
               const double* tau, double* c, const int* ldc,
               double* work, const int* lwork, int* info){
     F77_CALL(dormqr)(
-        side, trans, m, n, k, a, lda, tau, c, ldc, work, lwork, info);
+        side, trans, m, n, k, a, lda, tau, c, ldc, work, lwork, info
+        FCONE FCONE);
   }
 
   void dgeqp3(const int* m, const int* n, double* a, const int* lda,
@@ -65,13 +75,15 @@ namespace R_BLAS_LAPACK {
              const double *alpha, const double *a, const int *lda,
              const double *x, const int *incx, const double *beta,
              double *y, const int *incy){
-    F77_CALL(dgemv)(trans, m, n, alpha, a, lda, x, incx, beta, y, incy);
+    F77_CALL(dgemv)(trans, m, n, alpha, a, lda, x, incx, beta, y, incy
+                    FCONE);
   }
 
   void dsyrk(const char *uplo, const char *trans,
              const int *n, const int *k,
              const double *alpha, const double *a, const int *lda,
              const double *beta, double *c, const int *ldc){
-    F77_CALL(dsyrk)(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    F77_CALL(dsyrk)(uplo, trans, n, k, alpha, a, lda, beta, c, ldc
+                    FCONE FCONE);
   }
 }
