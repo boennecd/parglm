@@ -9,8 +9,14 @@
   UBSAN checks
   R devel (2019-11-06 r77376)
 * win-builder (devel and release)
-* `rhub::check_on_solaris()`
+* `rhub::check_on_solaris()` when it was still up 
+* `devtools::check_win_release()`
+* Fedora 30 with openBLAS like on CRAN
   
 ## R CMD check results
-The LTO issue have been solved. There is a note about the size of the 
-package on some platforms.
+There is a note about the size of the package on some platforms.
+
+I have tried to reproduce the error with openBLAS and Solaris but failed 
+to do so. I made a post on R-pkg-devel 
+(https://stat.ethz.ch/pipermail/r-package-devel/2020q1/005175.html)
+but I did not get a reply.
