@@ -240,7 +240,7 @@ test_that("'method' equal to 'LINPACK' behaves as 'glm'", {
   s2 <- summary(f2)
 
   excl <- c("call", "coefficients", "cov.unscaled", "cov.scaled",
-            "dispersion")
+            "dispersion", "iter")
   expect_equal(s1[!names(s1) %in% excl], s2[!names(s2) %in% excl])
   expect_equal(s1$coefficients, s2$coefficients)
 
