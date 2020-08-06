@@ -4,6 +4,7 @@
 #include "family.h"
 #include "R_BLAS_LAPACK.h"
 #include <memory>
+#include "constant.h"
 
 #ifdef PARGLM_PROF
 #include <gperftools/profiler.h>
@@ -13,7 +14,10 @@
 #include <sstream>
 #endif
 
-#define MIN(a,b) (((a)<(b))?(a):(b))
+inline size_t floor_mult(size_t const num, size_t const denom){
+  size_t const tmp = num / denom;
+  return std::max(tmp, static_cast<size_t>(1L)) * denom;
+}
 
 /* data holder class */
 class data_holder_base {
@@ -27,7 +31,6 @@ public:
   arma::vec &offsets;
   arma::vec eta;
   arma::vec mu;
-  std::unique_ptr<double[]> X_work_mem;
 
   const arma::uword max_threads, p, n;
   const glm_base &family;
@@ -36,11 +39,11 @@ public:
   data_holder_base(
     arma::mat &X, arma::vec &Ys, arma::vec &weights, arma::vec &offsets,
     const arma::uword max_threads, const arma::uword p, const arma::uword n,
-    const glm_base &family, arma::uword block_size = 10000):
+    const glm_base &family, arma::uword b_size = 10000):
     X(X), Ys(Ys), weights(weights), offsets(offsets), eta(Ys.n_elem),
-    mu(Ys.n_elem), X_work_mem(new double[X.n_elem]),
+    mu(Ys.n_elem),
     max_threads(max_threads), p(p), n(n), family(std::move(family)),
-    block_size(block_size)
+    block_size(floor_mult(b_size, cacheline_size() / sizeof(double)))
   { }
 };
 
@@ -52,14 +55,6 @@ struct parallelglm_res {
   const bool conv;
   const arma::uword rank;
 };
-
-void thread_to_rcout(const std::string &msg){
-  static std::mutex cpp_out_m;
-  {
-    std::lock_guard<std::mutex> lk(cpp_out_m);
-    Rcpp::Rcout << msg;
-  }
-}
 
 const double double_one = 1., double_zero = 0.;
 const int int_one = 1;
@@ -78,66 +73,96 @@ inline void inplace_copy
       std::memcpy(x, y, n_ele * sizeof(double));
   }
 
+namespace {
+/* handles working memory */
+static size_t wk_mem_per_thread  = 0L,
+              current_wk_size    = 0L;
+static std::unique_ptr<double[]> current_wk_mem =
+  std::unique_ptr<double[]>();
+
+double * get_working_memory(thread_pool const &pool){
+  size_t const my_num = pool.get_id();
+  return current_wk_mem.get() + my_num * wk_mem_per_thread;
+}
+
+void set_working_memory
+  (size_t const max_n, size_t const max_p, size_t const n_threads){
+  constexpr size_t const mult = cacheline_size() / sizeof(double),
+                     min_size = 2L * mult;
+  size_t m_dim = 2L * max_n + max_n * max_p;
+  m_dim = std::max(m_dim, min_size);
+  m_dim = (m_dim + mult - 1L) / mult;
+  m_dim *= mult;
+  wk_mem_per_thread = m_dim;
+
+  size_t const n_t = std::max(n_threads, static_cast<size_t>(1L)) + 1L,
+          new_size = n_t * m_dim;
+  if(new_size > current_wk_size){
+    current_wk_mem.reset(new double[new_size]);
+    current_wk_size = new_size;
+
+  }
+}
+
+void set_working_memory(data_holder_base const &data){
+  size_t const resid = data.n % data.block_size + 1L;
+  set_working_memory(data.block_size + resid, data.p, data.max_threads);
+}
+} // namespace
+
+
 /* Class to fit glm using QR updated in chunks */
 class parallelglm_class_QR {
   using uword = arma::uword;
 
-  class glm_qr_data_generator : public qr_data_generator {
+  class glm_qr_data_generator final : public qr_data_generator {
     const uword i_start, i_end;
     data_holder_base &data;
+    thread_pool const & pool;
     const bool do_inner;
 
   public:
     glm_qr_data_generator
     (uword i_start, uword i_end, data_holder_base &data,
-     const bool do_inner = false):
-    i_start(i_start), i_end(i_end), data(data),
+     thread_pool const &pool,const bool do_inner = false):
+    i_start(i_start), i_end(i_end), data(data), pool(pool),
     do_inner(do_inner) {}
 
     qr_work_chunk get_chunk() const override {
       /* assign objects for later use */
-      arma::span my_span(i_start, i_end);
-      arma::uword n = i_end - i_start + 1;
+      arma::uword const n = i_end - i_start + 1;
 
-      arma::vec y     (data.Ys.begin()      + i_start           , n, false);
-      arma::vec weight(data.weights.begin() + i_start           , n, false);
-      arma::vec offset(data.offsets.begin() + i_start           , n, false);
-      arma::vec eta   (data.eta.begin()     + i_start           , n, false);
-      arma::vec mu    (data.mu.begin()      + i_start           , n, false);
+      double * const wk_mem = get_working_memory(pool);
+      size_t wk_cur = 0L;
+      auto get_wk_mem = [&](size_t const siz){
+        double * out = wk_mem + wk_cur;
+        wk_cur += siz;
+        return out;
+      };
+
+      arma::vec y(data.Ys.begin()      + i_start, n, false, true),
+           weight(data.weights.begin() + i_start, n, false, true),
+           offset(data.offsets.begin() + i_start, n, false, true),
+              eta(data.eta.begin()     + i_start, n, false, true),
+               mu(data.mu.begin()      + i_start, n, false, true),
+                w(get_wk_mem(n)                 , n, false, true),
+                z(get_wk_mem(n)                 , n, false, true);
 
       /* compute values for QR computation */
-      arma::vec mu_eta_val = data.family.mu_eta(eta);
+      for(size_t i = 0; i < n; ++i){
+        double const var = data.family.variance(mu[i]),
+              mu_eta_val = data.family.mu_eta(eta[i]);
 
-      arma::uvec good = arma::find((weight > 0) % (mu_eta_val != 0.));
-      const bool is_all_good = good.n_elem == n;
+        z[i] = (eta[i] - offset[i]) + (y[i] - mu[i]) / mu_eta_val;
+        w[i] = std::sqrt(weight[i] * mu_eta_val * mu_eta_val / var);
 
-      arma::vec var = data.family.variance(mu);
-
-      arma::vec z = (eta - offset) + (y - mu) / mu_eta_val,
-        w = arma::sqrt(weight % arma::square(mu_eta_val) / var);
-
-      /* ensure that bad entries has zero weight */
-      if(!is_all_good){
-        auto good_next = good.begin();
-        auto w_i = w.begin();
-        arma::uword i = 0;
-        for(; i < w.n_elem and good_next != good.end(); ++i, ++w_i){
-          if(i == *good_next){
-            ++good_next;
-            continue;
-
-          }
-
-          *w_i = 0.;
-
-        }
-
-        for(; i < w.n_elem; ++i, ++w_i)
-          *w_i = 0.;
+        bool is_good = w[i] > 0 and mu_eta_val != 0.;
+        if(!is_good)
+          w[i] = 0.;
       }
 
       const arma::uword p = data.X.n_cols;
-      arma::mat X(data.X_work_mem.get() + i_start * p, n, p, false, true);
+      arma::mat X(get_wk_mem(n * p), n, p, false, true);
       inplace_copy(X, data.X, i_start, i_end);
       X.each_col() %= w;
       z %= w;
@@ -165,14 +190,17 @@ class parallelglm_class_QR {
   class get_inner_worker {
     const uword i_start, i_end;
     data_holder_base &data;
+    thread_pool const &pool;
 
   public:
     get_inner_worker
-    (uword i_start, uword i_end, data_holder_base &data):
-    i_start(i_start), i_end(i_end), data(data) {}
+    (uword i_start, uword i_end, data_holder_base &data,
+     thread_pool const &pool):
+    i_start(i_start), i_end(i_end), data(data), pool(pool) {}
 
     qr_work_chunk operator()() const {
-      return glm_qr_data_generator(i_start, i_end, data, true).get_chunk();
+      return glm_qr_data_generator
+        (i_start, i_end, data, pool, true).get_chunk();
     }
   };
 
@@ -187,14 +215,13 @@ class parallelglm_class_QR {
     first_it(first_it), data(data), i_start(i_start), i_end(i_end) { }
 
     double operator()(){
-      arma::span my_span(i_start, i_end);
-      uword n = i_end - i_start + 1;
+      uword const n = i_end - i_start + 1;
 
-      arma::vec eta(data.eta.begin() + i_start                 , n, false, true);
-      arma::vec mu (data.mu.begin()  + i_start                 , n, false, true);
-      arma::vec y     (data.Ys.begin()      + i_start          , n, false);
-      arma::vec weight(data.weights.begin() + i_start          , n, false);
-      arma::vec offset(data.offsets.begin() + i_start          , n, false);
+      arma::vec eta(data.eta.begin() + i_start       , n, false, true);
+      arma::vec mu (data.mu.begin()  + i_start       , n, false, true);
+      arma::vec y     (data.Ys.begin()      + i_start, n, false, true);
+      arma::vec weight(data.weights.begin() + i_start, n, false, true);
+      arma::vec offset(data.offsets.begin() + i_start, n, false, true);
 
       if(first_it)
         data.family.initialize(eta, y, weight);
@@ -224,11 +251,14 @@ class parallelglm_class_QR {
   static double set_eta_n_mu(data_holder_base &data, bool first_it,
                              qr_parallel &pool, const bool use_start){
     std::vector<std::future<double> > futures;
-
     uword n = data.X.n_rows, i_start = 0, i_end = 0.;
+
+    set_working_memory(data);
+
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
-      if(i_start == 0L)
+      bool const is_end = i_end + data.block_size > n - 1;
+      if(is_end and i_end < n - 1L)
         /* add extra from the residual chunk */
         i_end += n % data.block_size;
       futures.push_back(
@@ -249,14 +279,18 @@ class parallelglm_class_QR {
   static void submit_tasks(data_holder_base &data, qr_parallel &pool){
     // setup generators
     uword n = data.X.n_rows, i_start = 0, i_end = 0.;
+
+    set_working_memory(data);
+
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
-      if(i_start == 0L)
+      bool const is_end = i_end + data.block_size > n - 1;
+      if(is_end and i_end < n - 1L)
         /* add extra from the residual chunk */
         i_end += n % data.block_size;
       pool.submit(
         std::unique_ptr<qr_data_generator>(
-          new glm_qr_data_generator(i_start, i_end, data)));
+          new glm_qr_data_generator(i_start, i_end, data, pool.th_pool)));
     }
   }
 
@@ -283,16 +317,19 @@ class parallelglm_class_QR {
   static inner_output get_inner(data_holder_base &data, qr_parallel &pool)
   {
     std::vector<std::future<qr_work_chunk> > futures;
-
     uword n = data.X.n_rows, i_start = 0, i_end = 0.;
+
+    set_working_memory(data);
+
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
-      if(i_start == 0L)
+      bool const is_end = i_end + data.block_size > n - 1;
+      if(is_end and i_end < n - 1L)
         /* add extra from the residual chunk */
         i_end += n % data.block_size;
       futures.push_back(
         pool.th_pool.submit(get_inner_worker(
-            i_start, i_end, data)));
+            i_start, i_end, data, pool.th_pool)));
     }
 
     inner_output out;
@@ -364,7 +401,7 @@ public:
         rank = beta.n_elem;
 
       } else if(method == "LINPACK"){
-        auto o = get_dqrls_res(data, pool, MIN(1e-07, tol / 1000));
+        auto o = get_dqrls_res(data, pool, std::min(1e-07, tol / 1000));
         R_f_out.reset(new R_F(std::move(o.R_F)));
         for(arma::uword i = 0; i < o.R_F.pivot.n_elem; ++i)
           beta[o.R_F.pivot[i]] = o.coefficients[i];
@@ -405,7 +442,8 @@ public:
     }
 
     return { beta, *R_f_out.get(), dev,
-             (arma::uword)MIN(i + 1L, it_max), i < it_max, rank };
+             std::min(static_cast<arma::uword>(i + 1L), it_max),
+             i < it_max, rank };
   }
 };
 

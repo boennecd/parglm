@@ -69,16 +69,16 @@ public:
 
 std::unique_ptr<glm_base> get_fam_obj(const std::string family);
 
-#define GLM_CLASS(fname)                                            \
-  class fname : public glm_base {                                   \
-    public:                                                         \
-      double dev_resids(double, double, double) const override; \
-      double linkfun(double) const override;                    \
-      double linkinv(double) const override;                    \
-      double variance(double) const override;                   \
-      double mu_eta(double) const override;                     \
-      double initialize(double, double) const override;         \
-      std::string name() const override;                        \
+#define GLM_CLASS(fname)                                        \
+  class fname final : public glm_base {                         \
+    public:                                                     \
+      double dev_resids(double, double, double) const;          \
+      double linkfun(double) const;                             \
+      double linkinv(double) const;                             \
+      double variance(double) const;                            \
+      double mu_eta(double) const;                              \
+      double initialize(double, double) const;                  \
+      std::string name() const;                                 \
     };
 
 GLM_CLASS(binomial_logit)

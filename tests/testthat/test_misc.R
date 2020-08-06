@@ -19,7 +19,7 @@ test_that("Using more threads then rows yields a warning", {
   this_df <- data.frame( a = sample( 1:1000000 , 20 ) / 100 , b = 1 )
   expect_warning(
     parglm( a ~ b - 1, data = this_df , nthreads = 64),
-    regexp = "Too few observation compared to the number of threads. 2 thread(s) will be used instead of 64.",
+    regexp = "Too few observation compared to the number of threads. 1 thread(s) will be used instead of 64.",
     fixed = TRUE)
 
   # should yield one thread (the number of rows is less than the number required

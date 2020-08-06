@@ -237,7 +237,7 @@ public:
       for(unsigned i=0;i<thread_count;++i)
       {
         threads.push_back(
-          std::thread(&thread_pool::worker_thread,this));
+          std::thread(&thread_pool::worker_thread, this));
       }
     }
     catch(...)
@@ -258,6 +258,16 @@ public:
       done=true;
     }
     cv.notify_all();
+  }
+
+  // added
+  size_t get_id() const {
+    auto const this_id = std::this_thread::get_id();
+    for(size_t i = 0; i < threads.size(); ++i)
+      if(threads[i].get_id() == this_id)
+        return i;
+
+    return threads.size();
   }
 };
 

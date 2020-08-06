@@ -183,7 +183,7 @@ parglm.fit <- function(
   if (is.null(offset))
     offset <- rep.int(0, nobs)
 
-  n_min_per_thread <- 10L
+  n_min_per_thread <- 16L
   n_per_thread <- nrow(x) / control$nthreads
   if(n_per_thread < n_min_per_thread){
     nthreads_new <- nrow(x) %/% n_min_per_thread
