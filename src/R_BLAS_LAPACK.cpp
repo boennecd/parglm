@@ -7,8 +7,23 @@
 #define FCONE
 #endif
 #include <R_ext/Lapack.h>
-
 #include <Rcpp.h>
+
+extern "C"
+{
+#ifdef FC_LEN_T
+  int F77_NAME(ilaenv)(
+      int const* /* ISPEC */, char const* /* NAME */,
+      char const* /* OPTS */, int const* /* N1 */,
+      int const* /* N2 */, int const* /* N3 */, int const* /* N4 */,
+      FC_LEN_T, FC_LEN_T);
+#else
+  int F77_NAME(ilaenv)(
+      int const* /* ISPEC */, char const* /* NAME */,
+      char const* /* OPTS */, int const* /* N1 */,
+      int const* /* N2 */, int const* /* N3 */, int const* /* N4 */);
+#endif
+}
 
 #include <R_ext/Applic.h>
 #include "R_BLAS_LAPACK.h"
@@ -85,5 +100,17 @@ namespace R_BLAS_LAPACK {
              const double *beta, double *c, const int *ldc){
     F77_CALL(dsyrk)(uplo, trans, n, k, alpha, a, lda, beta, c, ldc
                     FCONE FCONE);
+  }
+
+  int ilaenv(int const *ispec, std::string const &name,
+             std::string const &opts,
+             int const *N1, int const *N2, int const *N3, int const *N4){
+#ifdef FC_LEN_T
+    return F77_CALL(ilaenv)(ispec, name.c_str(), opts.c_str(), N1,
+                    N2, N3, N4, name.size(), opts.size());
+#else
+    return F77_CALL(ilaenv)(ispec, name.c_str(), opts.c_str(), N1,
+                    N2, N3, N4);
+#endif
   }
 }

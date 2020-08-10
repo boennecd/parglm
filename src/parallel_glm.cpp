@@ -67,18 +67,20 @@ inline void inplace_copy
     double *x = X.begin();
     const double *y = Y.begin() + start;
 
-    std::size_t n_ele = end - start + 1L;
+    size_t const n_ele = end - start + 1L;
     for(unsigned int i = 0; i < X.n_cols;
         ++i, x += X.n_rows, y += Y.n_rows)
       std::memcpy(x, y, n_ele * sizeof(double));
   }
 
 namespace {
+constexpr size_t const max_wk_mem_keep = 10000000L / sizeof(double);
+
 /* handles working memory */
 static size_t wk_mem_per_thread  = 0L,
-              current_wk_size    = 0L;
+              current_wk_size    = max_wk_mem_keep;
 static std::unique_ptr<double[]> current_wk_mem =
-  std::unique_ptr<double[]>();
+  std::unique_ptr<double[]>(new double[max_wk_mem_keep]);
 
 double * get_working_memory(thread_pool const &pool){
   size_t const my_num = pool.get_id();
@@ -89,7 +91,7 @@ void set_working_memory
   (size_t const max_n, size_t const max_p, size_t const n_threads){
   constexpr size_t const mult = cacheline_size() / sizeof(double),
                      min_size = 2L * mult;
-  size_t m_dim = 2L * max_n + max_n * max_p;
+  size_t m_dim = 4L * max_n + max_n * max_p;
   m_dim = std::max(m_dim, min_size);
   m_dim = (m_dim + mult - 1L) / mult;
   m_dim *= mult;
@@ -102,7 +104,18 @@ void set_working_memory
     current_wk_size = new_size;
 
   }
+
+  set_p_qr_working_memory(max_n, max_p, n_threads);
 }
+
+struct reset_working_memory {
+  ~reset_working_memory() {
+    if(current_wk_size > max_wk_mem_keep){
+      current_wk_size = 0L;
+      current_wk_mem.reset();
+    }
+  }
+};
 
 void set_working_memory(data_holder_base const &data){
   size_t const resid = data.n % data.block_size + 1L;
@@ -146,19 +159,23 @@ class parallelglm_class_QR {
               eta(data.eta.begin()     + i_start, n, false, true),
                mu(data.mu.begin()      + i_start, n, false, true),
                 w(get_wk_mem(n)                 , n, false, true),
-                z(get_wk_mem(n)                 , n, false, true);
+                z(get_wk_mem(n)                 , n, false, true),
+              var(get_wk_mem(n)                 , n, false, true),
+       mu_eta_val(get_wk_mem(n)                 , n, false, true);
 
       /* compute values for QR computation */
+      data.family.variance(var, mu);
+      data.family.mu_eta  (mu_eta_val, eta);
+
       for(size_t i = 0; i < n; ++i){
-        double const var = data.family.variance(mu[i]),
-              mu_eta_val = data.family.mu_eta(eta[i]);
+        z[i] = (eta[i] - offset[i]) + (y[i] - mu[i]) / mu_eta_val[i];
+        w[i] = std::sqrt(weight[i] * mu_eta_val[i] * mu_eta_val[i] / var[i]);
 
-        z[i] = (eta[i] - offset[i]) + (y[i] - mu[i]) / mu_eta_val;
-        w[i] = std::sqrt(weight[i] * mu_eta_val * mu_eta_val / var);
+        bool is_good = w[i] > 0 and mu_eta_val[i] != 0.;
+        if(is_good)
+          continue;
 
-        bool is_good = w[i] > 0 and mu_eta_val != 0.;
-        if(!is_good)
-          w[i] = 0.;
+        w[i] = 0.;
       }
 
       const arma::uword p = data.X.n_cols;
@@ -232,7 +249,7 @@ class parallelglm_class_QR {
           if(ISNA(*c))
             *c = 0.;
 
-        eta = offset;
+        std::memcpy(eta.begin(), offset.begin(), sizeof(double) * n);
 
         int n_i = n, p = coef.n_elem, N = data.X.n_rows;
         R_BLAS_LAPACK::dgemv(
@@ -253,8 +270,6 @@ class parallelglm_class_QR {
     std::vector<std::future<double> > futures;
     uword n = data.X.n_rows, i_start = 0, i_end = 0.;
 
-    set_working_memory(data);
-
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
       bool const is_end = i_end + data.block_size > n - 1;
@@ -267,11 +282,8 @@ class parallelglm_class_QR {
     }
 
     double dev = 0;
-    while (!futures.empty())
-    {
-      dev += futures.back().get();
-      futures.pop_back();
-    }
+    for(auto &f : futures)
+      dev += f.get();
 
     return dev;
   }
@@ -279,8 +291,6 @@ class parallelglm_class_QR {
   static void submit_tasks(data_holder_base &data, qr_parallel &pool){
     // setup generators
     uword n = data.X.n_rows, i_start = 0, i_end = 0.;
-
-    set_working_memory(data);
 
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
@@ -319,8 +329,6 @@ class parallelglm_class_QR {
     std::vector<std::future<qr_work_chunk> > futures;
     uword n = data.X.n_rows, i_start = 0, i_end = 0.;
 
-    set_working_memory(data);
-
     for(; i_start < n; i_start = i_end + 1L){
       i_end = std::min(n - 1, i_start + data.block_size - 1);
       bool const is_end = i_end + data.block_size > n - 1;
@@ -334,9 +342,8 @@ class parallelglm_class_QR {
 
     inner_output out;
     bool is_first = true;
-    while(!futures.empty()){
-      auto o = futures.back().get();
-      futures.pop_back();
+    for(auto &f : futures){
+      auto o = f.get();
 
       if(is_first){
         out.C = o.X;
@@ -365,6 +372,9 @@ public:
     uword n = X.n_rows;
     data_holder_base data(X, Ys, weights, offsets, nthreads, p, n, family,
                           block_size);
+
+    set_working_memory(data);
+    reset_working_memory do_reset;
 
     if(p != start.n_elem)
       Rcpp::stop("Invalid `start`");

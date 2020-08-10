@@ -1,5 +1,6 @@
 #ifndef R_BLAS_LAPACK_H
 #define R_BLAS_LAPACK_H
+#include <string>
 
 namespace R_BLAS_LAPACK {
   // wrapper for dtrtrs
@@ -30,6 +31,9 @@ namespace R_BLAS_LAPACK {
              const int*, const int*,
              const double*, const double*, const int*,
              const double*, double*, const int*);
+
+  int ilaenv(int const*, std::string const&, std::string const&, int const*,
+             int const*, int const*, int const*);
 }
 
 #endif

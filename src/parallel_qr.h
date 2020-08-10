@@ -6,6 +6,9 @@
 #include <memory>
 #include <list>
 
+void set_p_qr_working_memory(size_t const max_m, size_t const max_n,
+                             size_t const n_threads);
+
 struct qr_work_chunk {
   arma::mat X;
   arma::mat Y;
@@ -42,9 +45,11 @@ class qr_parallel {
 
   class worker {
     std::unique_ptr<qr_data_generator> my_generator;
+    thread_pool &th_pool;
 
   public:
-    worker(std::unique_ptr<qr_data_generator>);
+    worker(std::unique_ptr<qr_data_generator>,
+           thread_pool&);
 
     R_F operator()();
   };
