@@ -48,7 +48,7 @@ double binomial_logit::dev_resids(double y, double mu, double wt) const {
 double binomial_logit::mu_eta(double eta) const {
   double opexp = 1 + exp(eta);
 
-  return (eta > THRESH || eta < MTHRESH) ? DOUBLE_EPS :
+  return (eta > THRESH || eta < MTHRESH) ? DBL_EPSILON :
     exp(eta)/(opexp * opexp);
 }
 
