@@ -2,8 +2,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^TODO$
-^\.sandbox\.R$
+^sandbox/.*
 ^\.travis\.yml$
 ^vignettes/(?![^\.]*(\.html\.asis|\.html)$).*
 ^cran-comments\.md$
-^benchmark
