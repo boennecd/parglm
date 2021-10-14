@@ -1,19 +1,19 @@
 #include "family.h"
 #include <float.h>
 #include <limits>
+#include <algorithm>
 
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-
-static const double THRESH = 30.;
-static const double MTHRESH = -30.;
+namespace {
+constexpr double THRESH{30},
+                MTHRESH{-30};
+}
 
 inline double log_linkinv(double eta){
-  return MAX(std::exp(eta), std::numeric_limits<double>::epsilon());
+  return std::max(std::exp(eta), std::numeric_limits<double>::epsilon());
 }
 
 inline double log_mu_eta(double eta){
-  return MAX(std::exp(eta), std::numeric_limits<double>::epsilon());
+  return std::max(std::exp(eta), std::numeric_limits<double>::epsilon());
 }
 
 
@@ -32,8 +32,9 @@ double binomial_logit::linkfun(double mu) const {
 }
 
 double binomial_logit::linkinv(double eta) const {
-  double tmp = (eta < MTHRESH) ? DBL_EPSILON :
-    ((eta > THRESH) ? 1 / DBL_EPSILON  : exp(eta));
+  double tmp = (eta < MTHRESH)
+    ? std::numeric_limits<double>::epsilon()
+    : ((eta > THRESH) ? 1 / std::numeric_limits<double>::epsilon()  : exp(eta));
   return tmp / (1 + tmp);
 }
 
@@ -48,7 +49,8 @@ double binomial_logit::dev_resids(double y, double mu, double wt) const {
 double binomial_logit::mu_eta(double eta) const {
   double opexp = 1 + exp(eta);
 
-  return (eta > THRESH || eta < MTHRESH) ? DOUBLE_EPS :
+  return (eta > THRESH || eta < MTHRESH)
+    ? std::numeric_limits<double>::epsilon() :
     exp(eta)/(opexp * opexp);
 }
 
@@ -69,7 +71,7 @@ double binomial_probit::linkfun(double mu) const {
 double binomial_probit::linkinv(double eta) const {
   const double thresh =
     -R::qnorm(std::numeric_limits<double>::epsilon(), 0, 1, 1, 0);
-  eta = MIN(MAX(eta, -thresh), thresh);
+  eta = std::min(std::max(eta, -thresh), thresh);
   return R::pnorm(eta, 0, 1, 1, 0);
 }
 
@@ -82,7 +84,7 @@ double binomial_probit::dev_resids(double y, double mu, double wt) const {
 }
 
 double binomial_probit::mu_eta(double eta) const {
-  return MAX(R::dnorm(eta, 0, 1, 0), std::numeric_limits<double>::epsilon());
+  return std::max(R::dnorm(eta, 0, 1, 0), std::numeric_limits<double>::epsilon());
 }
 
 double binomial_probit::initialize(double y, double weight) const {
@@ -102,7 +104,7 @@ double binomial_cauchit::linkfun(double mu) const {
 double binomial_cauchit::linkinv(double eta) const {
   const double thresh =
     -R::qcauchy(std::numeric_limits<double>::epsilon(), 0, 1, 1, 0);
-  eta = MIN(MAX(eta, -thresh), thresh);
+  eta = std::min(std::max(eta, -thresh), thresh);
   return R::pcauchy(eta, 0, 1, 1, 0);
 }
 
@@ -115,7 +117,7 @@ double binomial_cauchit::dev_resids(double y, double mu, double wt) const {
 }
 
 double binomial_cauchit::mu_eta(double eta) const {
-  return MAX(R::dcauchy(eta, 0, 1, 0), std::numeric_limits<double>::epsilon());
+  return std::max(R::dcauchy(eta, 0, 1, 0), std::numeric_limits<double>::epsilon());
 }
 
 double binomial_cauchit::initialize(double y, double weight) const {
@@ -163,7 +165,7 @@ double binomial_cloglog::linkfun(double mu) const {
 }
 
 double binomial_cloglog::linkinv(double eta) const {
-  return MAX(MIN(-std::expm1(-std::exp(eta)),
+  return std::max(std::min(-std::expm1(-std::exp(eta)),
                  1 - std::numeric_limits<double>::epsilon()),
              std::numeric_limits<double>::epsilon());
 }
@@ -177,9 +179,9 @@ double binomial_cloglog::dev_resids(double y, double mu, double wt) const {
 }
 
 double binomial_cloglog::mu_eta(double eta) const {
-  eta = MIN(eta, 700);
+  eta = std::min(eta, 700.);
   double f = exp(eta);
-  return MAX(f * exp(-f), std::numeric_limits<double>::epsilon());
+  return std::max(f * exp(-f), std::numeric_limits<double>::epsilon());
 }
 
 double binomial_cloglog::initialize(double y, double weight) const {

@@ -49,13 +49,13 @@ Type 'q()' to quit R.
 +   times = 5, setup = gc())
 > summary(mic)[, c("expr", "lq", "median", "uq")]
     expr  lq median  uq
-1    glm 671    712 758
-2   QR 1 734    742 773
-3   QR 2 419    421 427
-4   QR 4 290    297 355
-5 fast 1 417    420 424
-6 fast 2 224    239 240
-7 fast 4 145    157 177
+1    glm 614    676 683
+2   QR 1 712    712 714
+3   QR 2 388    391 392
+4   QR 4 270    271 273
+5 fast 1 392    392 392
+6 fast 2 220    220 221
+7 fast 4 136    137 138
 > 
 > b_size <- n / 4L / 5L
 > v <- microbenchmark(
@@ -73,14 +73,14 @@ Type 'q()' to quit R.
 +   times = 5, setup = gc())
 > summary(mic)[, c("expr", "lq", "median", "uq")]
     expr  lq median  uq
-1    glm 671    712 758
-2   QR 1 734    742 773
-3   QR 2 419    421 427
-4   QR 4 290    297 355
-5 fast 1 417    420 424
-6 fast 2 224    239 240
-7 fast 4 145    157 177
+1    glm 614    676 683
+2   QR 1 712    712 714
+3   QR 2 388    391 392
+4   QR 4 270    271 273
+5 fast 1 392    392 392
+6 fast 2 220    220 221
+7 fast 4 136    137 138
 > 
 > proc.time()
    user  system elapsed 
- 48.991   0.444  33.727 
+ 45.250   0.361  31.698 
