@@ -1,7 +1,7 @@
 parglm
 ======
 
-[![Build Status on Travis](https://travis-ci.org/boennecd/parglm.svg?branch=master)](https://travis-ci.org/boennecd/parglm)
+[![R-CMD-check](https://github.com/boennecd/parglm/workflows/R-CMD-check/badge.svg)](https://github.com/boennecd/parglm/actions)
 [![](https://www.r-pkg.org/badges/version/parglm)](https://CRAN.R-project.org/package=parglm)
 [![CRAN RStudio mirror downloads](http://cranlogs.r-pkg.org/badges/parglm)](https://CRAN.R-project.org/package=parglm)
 

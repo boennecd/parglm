@@ -1,15 +1,15 @@
 # parglm 0.1.7
-* avoid some virtual function calls and remove a few macros. 
-* fix an issue due to new STRICT_R_HEADERS variable in Rcpp.
+* Avoid some virtual function calls and remove a few macros. 
+* Fix an issue due to the new STRICT_R_HEADERS variable in Rcpp.
 
 # parglm 0.1.6
-* avoid some memory allocations.
-* fix a test issue with ATLAS.
+* Avoid some memory allocations.
+* Fix a test issue with ATLAS.
 
 # parglm 0.1.4
 * `stop`s when there are more variables than observations. Previously, this 
   caused a crash.
-* handle Fortran string length argument.
+* Handle Fortran string length argument.
 
 # parglm 0.1.3
 * Fix bug found with Valgrind.

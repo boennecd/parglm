@@ -1,16 +1,17 @@
 ## Test environments
-* Ubuntu 18.04 LTS with gcc 8.3.0
-  R version 3.6.3
-* Ubuntu 16.04 LTS (on travis-ci)
-  R version 4.0.0
-* win-builder (devel and release)
+* Ubuntu 20.04 LTS with gcc 10.1.0
+  R version 4.1.1
+* Ubuntu 20.04 LTS with gcc 10.1.0
+  R version 4.1.1 with valgrind
+* Ubuntu 20.04 LTS with gcc 10.1.0
+  R devel 2021-10-09 r81024 with ASAN and UBSAN
+* Github actions on windows-latest (release), macOS-latest (release), 
+  ubuntu-20.04 (release), and ubuntu-20.04 (devel)
+* win-builder (devel, oldrelease, and release)
 * `rhub::check_for_cran()`
+* `rhub::check(platform = c("fedora-clang-devel", "macos-highsierra-release-cran"))`
   
 ## R CMD check results
-There is a note about the size of the package on some platforms.
+There were no WARNINGs or ERRORs.
 
-I changed one of the tests such that it no longer checks the number of 
-iterations used by the method. This is the reason the test failed on ATLAS 
-which caused the package to get pulled of CRAN. However, the estimates 
-where similar to the test values and hence checking the iteration number 
-makes little sense.
+There is a NOTE about the package size in some cases.

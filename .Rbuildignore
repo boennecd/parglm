@@ -3,6 +3,6 @@
 ^\.Rproj\.user$
 ^TODO$
 ^sandbox/.*
-^\.travis\.yml$
 ^vignettes/(?![^\.]*(\.html\.asis|\.html)$).*
 ^cran-comments\.md$
+^\.github$
