@@ -5,6 +5,8 @@
   R version 4.1.1 with valgrind
 * Ubuntu 20.04 LTS with gcc 10.1.0
   R devel 2021-10-09 r81024 with ASAN and UBSAN
+* Ubuntu 20.04 LTS with gcc 10.1.0
+  R devel 2021-10-02 r81000 with LTO checks
 * Github actions on windows-latest (release), macOS-latest (release), 
   ubuntu-20.04 (release), and ubuntu-20.04 (devel)
 * win-builder (devel, oldrelease, and release)
