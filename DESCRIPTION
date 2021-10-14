@@ -5,7 +5,8 @@ Version: 0.1.6
 Authors@R: c(
   person("Benjamin", "Christoffersen", 
          email = "boennecd@gmail.com", 
-         role = c("cre", "aut")), 
+         role = c("cre", "aut"), 
+         comment = c(ORCID = "0000-0002-7182-1346")), 
   person("Anthony", "Williams", 
          role = c("cph")),
   person("Boost developers", 
@@ -15,6 +16,8 @@ Description: Provides a parallel estimation method for generalized
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
+URL: https://github.com/boennecd/parglm
+BugReports: https://github.com/boennecd/parglm/issues
 LinkingTo: Rcpp, RcppArmadillo
 Imports: Rcpp, Matrix
 SystemRequirements: C++11
